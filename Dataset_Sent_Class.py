@@ -7,25 +7,13 @@
 #
 ##############################################################
 
-import torch
-import pandas as pd
-import numpy as np
-import json
-from sklearn.preprocessing import LabelEncoder
 import re
-from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer
-from transformers import BertForSequenceClassification, AdamW, BertConfig
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+import json
 
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
-from torch.utils.data.sampler import SubsetRandomSampler
-import transformers
-# get_linear_schedule_with_warmup
-from transformers import RobertaTokenizer, BertTokenizer, RobertaModel, BertModel, AdamW
-from transformers import get_linear_schedule_with_warmup
-import time
+import torch
+
+from sklearn.preprocessing import LabelEncoder
+from torch.utils.data import Dataset
 
 
 class DatasetSent(Dataset):
@@ -37,7 +25,7 @@ class DatasetSent(Dataset):
     tokenizer: BertTokenizer
         transform data into feature that bert understand
     max_len: int
-        the max number of token in a sequence in bert tokenization. 
+        the max number of token in a sequence in bert tokenization.
     overlap_len: int
         the maximum number of overlap token.
     chunk_len: int
@@ -57,16 +45,15 @@ class DatasetSent(Dataset):
         data labels
     """
 
-    def __init__(self, tokenizer, max_len, sentence_group_num, chunk_len,max_size_dataset=None, file_location="complaints"):
-        self.tokenizer = tokenizer # bert tokenizer
+    def __init__(self, tokenizer, max_len, sentence_group_num, chunk_len, max_size_dataset=None,
+                 file_location="complaints"):
+        self.tokenizer = tokenizer  # bert tokenizer
         self.max_len = max_len
         self.sentence_group_num = sentence_group_num
         self.num_class = 10
         self.chunk_len = chunk_len
         self.max_size_dataset = max_size_dataset
         self.data, self.label = self.process_data(file_location,)
-
-
 
     def process_data(self, file_location):
         """ Preprocess the text and label columns as describe in the paper.
@@ -117,25 +104,23 @@ class DatasetSent(Dataset):
                 load_data = json.load(f)
 
             labels = [x['label'] for x in load_data]
-        'want all things in list, not df'
+        # Want all things in list, not df
 
         LE = LabelEncoder()
         train_raw_labels = LE.fit_transform(labels)
         # train_raw_sentences = [self.clean_txt(x['Sentences']) for x in load_data]
         train_raw_sentences = [self.clean_txt(self.extend_sentence_length(x['Sentences'])) for x in load_data]
-        # import pdb;pdb.set_trace()
 
-        if(self.max_size_dataset):
+        if (self.max_size_dataset):
             train_raw_labels = train_raw_labels[0:self.max_size_dataset]
             train_raw_sentences = train_raw_sentences[0:self.max_size_dataset]
 
-
-        'return string list in an object ndarrary, ad an int arrary for labels'
+        # return string list in an object ndarrary, ad an int arrary for labels
         # return train['text'].values, train['label'].values
 
         self.num_class = len(set(train_raw_labels))
 
-        return train_raw_sentences,train_raw_labels
+        return train_raw_sentences, train_raw_labels
 
     def extend_sentence_length(self, sentences):
         '''this is to combine short sentences'''
@@ -153,19 +138,15 @@ class DatasetSent(Dataset):
     def clean_txt(self, sentences):
         """ Remove special characters from text """
 
-        for i,text in enumerate(sentences):
+        for i, text in enumerate(sentences):
             text = re.sub("'", "", text)
-            text = re.sub("<br />","", text)
+            text = re.sub("<br />", "", text)
             text = re.sub("(\\W)+", " ", text)
             sentences[i] = text
 
         return sentences
 
-
-
-    def sentence_tokenizer(self,idx):
-
-        long_terms_token = []
+    def sentence_tokenizer(self, idx):
         input_ids_list = []
         attention_mask_list = []
         token_type_ids_list = []
@@ -175,7 +156,6 @@ class DatasetSent(Dataset):
             single_data = str(item)
 
             targets = int(self.label[idx])
-            'encode plus returns more info: https://huggingface.co/transformers/internal/tokenization_utils.html#transformers.tokenization_utils_base.PreTrainedTokenizerBase.encode_plus'
             '''data is a dict
             dict_keys(['overflowing_tokens', 'num_truncated_tokens', 'input_ids', 'token_type_ids', 'attention_mask'])
             work on a single sentence level
@@ -197,8 +177,6 @@ class DatasetSent(Dataset):
             attention_mask_list.append(data['attention_mask'].reshape(-1))
             token_type_ids_list.append(data['token_type_ids'].reshape(-1))
 
-
-
         return ({
             'ids': input_ids_list,  # torch.tensor(ids, dtype=torch.long),
             # torch.tensor(mask, dtype=torch.long),
@@ -209,33 +187,11 @@ class DatasetSent(Dataset):
             'len': [torch.tensor(len(input_ids_list), dtype=torch.long)]
         })
 
-
     def __getitem__(self, idx):
         """  Return a single tokenized sample at a given positon [idx] from data"""
 
         # consumer_complaint = str(self.data[idx][0])
         long_token = self.sentence_tokenizer(idx)
-        'this is for testing only'
-        # consumer_complaint = str(' '.join(self.data[idx])) +  str(' '.join(self.data[idx]))
-        #
-        # targets = int(self.label[idx])
-        # 'encode plus returns more info: https://huggingface.co/transformers/internal/tokenization_utils.html#transformers.tokenization_utils_base.PreTrainedTokenizerBase.encode_plus'
-        # '''data is a dict
-        # dict_keys(['overflowing_tokens', 'num_truncated_tokens', 'input_ids', 'token_type_ids', 'attention_mask'])
-        # work on a single sentence level
-        # '''
-        # data = self.tokenizer.encode_plus(
-        #     consumer_complaint,
-        #     max_length=self.chunk_len,
-        #     pad_to_max_length=True,
-        #     add_special_tokens=True,
-        #     return_attention_mask=True,
-        #     return_token_type_ids=True,
-        #     return_overflowing_tokens=True,
-        #     return_length=True,
-        #     return_tensors='pt')
-        # long_token = self.long_terms_tokenizer(data, targets)
-
 
         return long_token
 
