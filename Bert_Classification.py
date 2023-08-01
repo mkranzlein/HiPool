@@ -5,19 +5,16 @@
 # simple classification head.
 #
 ##############################################################
+from Graph_Models import GCN, GAT, GraphSAGE, SimpleRank, LinearFirst, DiffPool, HiPool
+
 import torch
 import networkx as nx
 import torch.nn as nn
-from torch_geometric.utils import erdos_renyi_graph, to_networkx, from_networkx
+from torch_geometric.utils import from_networkx
 import numpy as np
 import transformers
-# get_linear_schedule_with_warmup
-from transformers import RobertaTokenizer, BertTokenizer, RobertaModel, BertModel, AdamW
-from transformers import get_linear_schedule_with_warmup
-import time
 from torch.nn.utils.rnn import pad_sequence
-from TransformerLayer import  BERT
-
+from TransformerLayer import BERT
 from utils import kronecker_generator
 
 
@@ -28,11 +25,7 @@ class Bert_Classification_Model(nn.Module):
         super(Bert_Classification_Model, self).__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
-        # self.bert_drop=nn.Dropout(0.2)
-        # self.fc=nn.Linear(768,256)
-        # self.out=nn.Linear(256,10)
         self.out = nn.Linear(768, 10)
-        # self.relu=nn.ReLU()
 
     def forward(self, ids, mask, token_type_ids):
         """ Define how to perfom each call
@@ -42,18 +35,16 @@ class Bert_Classification_Model(nn.Module):
         ids: array
             -
         mask: array
-            - 
+            -
         token_type_ids: array
             -
 
         Returns
         _______
-            - 
+            -
         """
-        import pdb;pdb.set_trace()
         'original'
         results = self.bert(ids, attention_mask=mask, token_type_ids=token_type_ids)
-
 
         return self.out(results[1])
 
@@ -61,19 +52,15 @@ class Bert_Classification_Model(nn.Module):
 class Hi_Bert_Classification_Model(nn.Module):
     """ A Model for bert fine tuning """
 
-    def __init__(self,num_class,device,pooling_method='mean'):
+    def __init__(self, num_class, device, pooling_method='mean'):
         super(Hi_Bert_Classification_Model, self).__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
         self.out = nn.Linear(768, num_class)
         self.device = device
-        self.pooling_method=pooling_method
-
+        self.pooling_method = pooling_method
 
     def forward(self, ids, mask, token_type_ids):
-
-
-
         if self.pooling_method == "mean":
             emb_pool = torch.stack([torch.mean(x.float(), 0) for x in ids]).long().to(self.device)
         elif self.pooling_method == "max":
@@ -84,14 +71,13 @@ class Hi_Bert_Classification_Model(nn.Module):
         'original'
         results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
 
-
-        return self.out(results[1]) # (batch_size, class_number)
+        return self.out(results[1])  # (batch_size, class_number)
 
 
 class Hi_Bert_Classification_Model_LSTM(nn.Module):
     """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
 
-    def __init__(self,num_class,device,pooling_method='mean'):
+    def __init__(self, num_class, device, pooling_method='mean'):
         super(Hi_Bert_Classification_Model_LSTM, self).__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
@@ -101,8 +87,7 @@ class Hi_Bert_Classification_Model_LSTM(nn.Module):
 
         self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
         self.device = device
-        self.pooling_method=pooling_method
-
+        self.pooling_method = pooling_method
 
         self.lstm = nn.LSTM(
             input_size=self.lstm_hidden_size,
@@ -123,28 +108,24 @@ class Hi_Bert_Classification_Model_LSTM(nn.Module):
             results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
             batch_bert.append(results[1])
 
-        sent_bert = self.bert_lstm(torch.stack(batch_bert, 0)) # (batch, step, 128)
+        sent_bert = self.bert_lstm(torch.stack(batch_bert, 0))  # (batch, step, 128)
 
-
-        'lstm starts'
         batch_size = sent_bert.shape[0]
-        lstm_input = sent_bert.permute(1,0,2)
+        lstm_input = sent_bert.permute(1, 0, 2)
 
         h0 = c0 = torch.zeros(self.lstm_layer_number, batch_size, self.lstm_hidden_size).to(self.device)
 
         outputs, (ht, ct) = self.lstm(lstm_input, (h0, c0))
 
-        lstm_out = self.out(outputs[-1]) # shape torch.Size([batch, 128])
-        'lstm ends'
+        lstm_out = self.out(outputs[-1])  # shape torch.Size([batch, 128])
 
-
-        return lstm_out # (batch_size, class_number)
+        return lstm_out  # (batch_size, class_number)
 
 
 class Hi_Bert_Classification_Model_BERT(nn.Module):
     """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
 
-    def __init__(self,num_class,device,pooling_method='mean'):
+    def __init__(self, num_class, device, pooling_method='mean'):
         super(Hi_Bert_Classification_Model_BERT, self).__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
@@ -152,9 +133,8 @@ class Hi_Bert_Classification_Model_BERT(nn.Module):
         self.lstm_layer_number = 2
         self.lstm_hidden_size = 128
 
-        # self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
         self.device = device
-        self.pooling_method=pooling_method
+        self.pooling_method = pooling_method
 
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
         self.BERTLayer = BERT(hidden=self.lstm_hidden_size, n_layers=1, attn_heads=8).to(device)
@@ -162,7 +142,7 @@ class Hi_Bert_Classification_Model_BERT(nn.Module):
 
     def forward(self, ids, mask, token_type_ids):
 
-        'encode bert'
+        # encode bert
         bert_ids = pad_sequence(ids).permute(1, 0, 2).long().to(self.device)
         bert_mask = pad_sequence(mask).permute(1, 0, 2).long().to(self.device)
         bert_token_type_ids = pad_sequence(token_type_ids).permute(1, 0, 2).long().to(self.device)
@@ -173,24 +153,20 @@ class Hi_Bert_Classification_Model_BERT(nn.Module):
 
         sent_bert = torch.stack(batch_bert, 0)
 
-        'BERT starts'
-        lstm_input = sent_bert.permute(1,0,2)
-
+        # BERT starts
+        lstm_input = sent_bert.permute(1, 0, 2)
 
         lstm_input = self.mapping(lstm_input)
         lstm_output = self.BERTLayer(lstm_input)
-        'lstm ends'
+        # lstm ends
 
-        # import pdb;
-        # pdb.set_trace()
-        return self.out(lstm_output[-1]) # (batch_size, class_number)
+        return self.out(lstm_output[-1])  # (batch_size, class_number)
 
 
-from Graph_Models import GCN,GAT,GraphSAGE,SimpleRank,LinearFirst,DiffPool,HiPool
 class Hi_Bert_Classification_Model_GCN(nn.Module):
     """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
 
-    def __init__(self,args,num_class,device,adj_method,pooling_method='mean'):
+    def __init__(self, args, num_class, device, adj_method, pooling_method='mean'):
         super(Hi_Bert_Classification_Model_GCN, self).__init__()
         self.args = args
         self.bert_path = 'bert-base-uncased'
@@ -203,7 +179,7 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
 
         # self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
         self.device = device
-        self.pooling_method=pooling_method
+        self.pooling_method = pooling_method
 
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
 
@@ -219,17 +195,16 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
         elif self.args.graph_type == 'rank':
             self.gcn = SimpleRank(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
         elif self.args.graph_type == 'diffpool':
-            self.gcn = DiffPool(self.device,max_nodes=10,input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+            self.gcn = DiffPool(self.device, max_nodes=10, input_dim=self.lstm_hidden_size,
+                                hidden_dim=32, output_dim=num_class).to(device)
         elif self.args.graph_type == 'hipool':
-            self.gcn = HiPool(self.device,input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+            self.gcn = HiPool(self.device, input_dim=self.lstm_hidden_size,
+                              hidden_dim=32, output_dim=num_class).to(device)
 
         self.adj_method = adj_method
 
-
     def forward(self, ids, mask, token_type_ids):
 
-        # import pdb;pdb.set_trace()
-        'encode bert'
         bert_ids = pad_sequence(ids).permute(1, 0, 2).long().to(self.device)
         bert_mask = pad_sequence(mask).permute(1, 0, 2).long().to(self.device)
         bert_token_type_ids = pad_sequence(token_type_ids).permute(1, 0, 2).long().to(self.device)
@@ -240,15 +215,8 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
 
         sent_bert = torch.stack(batch_bert, 0)
 
-
-
-        'GCN starts'
         sent_bert = self.mapping(sent_bert)
         node_number = sent_bert.shape[1]
-
-
-
-        'random, using networkx'
 
         if self.adj_method == 'random':
             generated_adj = nx.dense_gnm_random_graph(node_number, node_number)
@@ -268,7 +236,7 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
             else:
                 generated_adj = nx.watts_strogatz_graph(node_number, k=node_number, p=0.5)
         elif self.adj_method == 'ba':
-            if node_number - 1>0:
+            if node_number - 1 > 0:
                 generated_adj = nx.barabasi_albert_graph(node_number, m=node_number-1)
             else:
                 generated_adj = nx.barabasi_albert_graph(node_number, m=node_number)
@@ -279,70 +247,47 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
             global_attention_step = 2
             attention_adj[:, :global_attention_step] = 1
             attention_adj[:global_attention_step, :] = 1
-            np.fill_diagonal(attention_adj,1) # fill diagonal with 1
+            np.fill_diagonal(attention_adj, 1)  # fill diagonal with 1
             half_sliding_window_size = 1
-            np.fill_diagonal(attention_adj[:,half_sliding_window_size:], 1)
+            np.fill_diagonal(attention_adj[:, half_sliding_window_size:], 1)
             np.fill_diagonal(attention_adj[half_sliding_window_size:, :], 1)
             generated_adj = nx.from_numpy_matrix(attention_adj)
 
         else:
             generated_adj = nx.dense_gnm_random_graph(node_number, node_number)
-
-
         nx_adj = from_networkx(generated_adj)
         adj = nx_adj['edge_index'].to(self.device)
 
-        'combine starts'
-        # generated_adj2 = nx.dense_gnm_random_graph(node_number,node_number)
-        # nx_adj = from_networkx(generated_adj)
-        # adj = nx_adj['edge_index'].to(self.device)
-        # nx_adj2 = from_networkx(generated_adj2)
-        # adj2 = nx_adj2['edge_index'].to(self.device)
-        # adj = torch.cat([adj2, adj], 1)
-        'combine ends'
-
         if self.adj_method == 'complete':
-            'complete connected'
-            adj = torch.ones((node_number,node_number)).to_sparse().indices().to(self.device)
+            adj = torch.ones((node_number, node_number)).to_sparse().indices().to(self.device)
 
         if self.args.graph_type.endswith('pool'):
-            'diffpool only accepts dense adj'
+            # diffpool only accepts dense adj
             adj_matrix = nx.adjacency_matrix(generated_adj).todense()
             adj_matrix = torch.from_numpy(np.asarray(adj_matrix)).to(self.device)
-            adj = (adj,adj_matrix)
-        # if self.args.graph_type == 'hipool':
+            adj = (adj, adj_matrix)
 
         # sent_bert shape torch.Size([batch_size, 3, 768])
         gcn_output_batch = []
         for node_feature in sent_bert:
 
+            gcn_output = self.gcn(node_feature, adj)
 
-            # import pdb;pdb.set_trace()
-
-            gcn_output=self.gcn(node_feature, adj)
-
-            'graph-level read out, summation'
-            gcn_output = torch.sum(gcn_output,0)
+            # Graph-level read out, summation
+            gcn_output = torch.sum(gcn_output, 0)
             gcn_output_batch.append(gcn_output)
-
-        # import pdb;
-        # pdb.set_trace()
 
         gcn_output_batch = torch.stack(gcn_output_batch, 0)
 
-        'GCN ends'
+        # GCN ends
 
-        # import pdb;
-        # pdb.set_trace()
-        return gcn_output_batch,generated_adj # (batch_size, class_number)
-
-
+        return gcn_output_batch, generated_adj  # (batch_size, class_number)
 
 
 class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
     """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
 
-    def __init__(self,num_class,device,adj_method,pooling_method='mean'):
+    def __init__(self, num_class, device, adj_method, pooling_method='mean'):
         super(Hi_Bert_Classification_Model_GCN_tokenlevel, self).__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
@@ -353,67 +298,33 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
 
         # self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
         self.device = device
-        self.pooling_method=pooling_method
+        self.pooling_method = pooling_method
 
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
 
-        'start GCN'
+        # start GCN
         # self.gcn = GCN(input_dim=self.lstm_hidden_size,hidden_dim=32,output_dim=num_class).to(device)
         self.gcn = GAT(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
         self.adj_method = adj_method
 
-
     def forward(self, ids, mask, token_type_ids):
-
-
         batch_size = len(ids)
-
-
-
         reshape_ids = pad_sequence(ids).permute(1, 0, 2).long().to(self.device)
         reshape_mask = pad_sequence(mask).permute(1, 0, 2).long().to(self.device)
         reshape_token_type_ids = pad_sequence(token_type_ids).permute(1, 0, 2).long().to(self.device)
 
-        # reshape_ids = torch.stack(ids, 0).reshape(batch_size, -1).to(self.device)
-        # reshape_mask = torch.stack(mask, 0).reshape(batch_size, -1).to(self.device)
-        # reshape_token_type_ids = torch.stack(token_type_ids, 0).reshape(batch_size, -1).to(self.device)
-
-
-
         batch_bert = []
         for emb_pool, emb_mask, emb_token_type_ids in zip(reshape_ids, reshape_mask, reshape_token_type_ids):
             results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
-            batch_bert.append(results[0]) # results[0] shape: (length,chunk_len, 768)
+            batch_bert.append(results[0])  # results[0] shape: (length,chunk_len, 768)
 
+        sent_bert = torch.stack(batch_bert, 0).reshape(batch_size, -1, 768)[:, :self.max_len, :]
 
-        sent_bert = torch.stack(batch_bert, 0).reshape(batch_size,-1,768)[:,:self.max_len,:]
-
-        # import pdb;pdb.set_trace()
-        # res,not_use = self.bert(reshape_ids,attention_mask=reshape_mask, token_type_ids=reshape_token_type_ids)
-        # sent_bert shape: (batch_size, seq_len, 768)
-
-
-
-        'encode bert'
-        # bert_ids = pad_sequence(ids).permute(1, 0, 2).long().to(self.device)
-        # bert_mask = pad_sequence(mask).permute(1, 0, 2).long().to(self.device)
-        # bert_token_type_ids = pad_sequence(token_type_ids).permute(1, 0, 2).long().to(self.device)
-        # batch_bert = []
-        # for emb_pool, emb_mask, emb_token_type_ids in zip(bert_ids, bert_mask, bert_token_type_ids):
-        #     results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
-        #     batch_bert.append(results[1])
-        #
-        # sent_bert = torch.stack(batch_bert, 0)
-
-
-
-        'GCN starts'
+        # GCN starts
         sent_bert = self.mapping(sent_bert)
         node_number = sent_bert.shape[1]
 
-
-
-        'random, using networkx'
+        # random, using networkx
 
         if self.adj_method == 'random':
             generated_adj = nx.dense_gnm_random_graph(node_number, node_number)
@@ -433,47 +344,31 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
             else:
                 generated_adj = nx.watts_strogatz_graph(node_number, k=node_number, p=0.5)
         elif self.adj_method == 'ba':
-            if node_number - 1>0:
+            if node_number - 1 > 0:
                 generated_adj = nx.barabasi_albert_graph(node_number, m=node_number-1)
             else:
                 generated_adj = nx.barabasi_albert_graph(node_number, m=node_number)
         else:
             generated_adj = nx.dense_gnm_random_graph(node_number, node_number)
 
-
         nx_adj = from_networkx(generated_adj)
         adj = nx_adj['edge_index'].to(self.device)
 
-        'combine starts'
-        # generated_adj2 = nx.dense_gnm_random_graph(node_number,node_number)
-        # nx_adj = from_networkx(generated_adj)
-        # adj = nx_adj['edge_index'].to(self.device)
-        # nx_adj2 = from_networkx(generated_adj2)
-        # adj2 = nx_adj2['edge_index'].to(self.device)
-        # adj = torch.cat([adj2, adj], 1)
-        'combine ends'
-
-
-
         if self.adj_method == 'complete':
-            'complete connected'
-            adj = torch.ones((node_number,node_number)).to_sparse().indices().to(self.device)
+            # complete connected
+            adj = torch.ones((node_number, node_number)).to_sparse().indices().to(self.device)
 
         # sent_bert shape torch.Size([batch_size, 3, 768])
         gcn_output_batch = []
         for node_feature in sent_bert:
-            gcn_output=self.gcn(node_feature, adj)
+            gcn_output = self.gcn(node_feature, adj)
 
             'graph-level read out, summation'
-            gcn_output = torch.sum(gcn_output,0)
+            gcn_output = torch.sum(gcn_output, 0)
             gcn_output_batch.append(gcn_output)
-
-
 
         gcn_output_batch = torch.stack(gcn_output_batch, 0)
 
-        'GCN ends'
+        # GCN ends
 
-        # import pdb;
-        # pdb.set_trace()
-        return gcn_output_batch,generated_adj # (batch_size, class_number)
+        return gcn_output_batch, generated_adj  # (batch_size, class_number)
