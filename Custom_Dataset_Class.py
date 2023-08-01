@@ -7,24 +7,14 @@
 #
 ##############################################################
 
-import torch
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
 import re
-from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer
-from transformers import BertForSequenceClassification, AdamW, BertConfig
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
-from torch.utils.data.sampler import SubsetRandomSampler
-import transformers
-# get_linear_schedule_with_warmup
-from transformers import RobertaTokenizer, BertTokenizer, RobertaModel, BertModel, AdamW
-from transformers import get_linear_schedule_with_warmup
-import time
+import numpy as np
+import pandas as pd
+import torch
+
+from sklearn.preprocessing import LabelEncoder
+from torch.utils.data import Dataset
 
 
 class ConsumerComplaintsDataset1(Dataset):
@@ -36,7 +26,7 @@ class ConsumerComplaintsDataset1(Dataset):
     tokenizer: BertTokenizer
         transform data into feature that bert understand
     max_len: int
-        the max number of token in a sequence in bert tokenization. 
+        the max number of token in a sequence in bert tokenization.
     overlap_len: int
         the maximum number of overlap token.
     chunk_len: int
@@ -56,7 +46,8 @@ class ConsumerComplaintsDataset1(Dataset):
         data labels
     """
 
-    def __init__(self, tokenizer, max_len, chunk_len=200, overlap_len=50, approach="all", max_size_dataset=None, file_location="./us-consumer-finance-complaints/consumer_complaints.csv", min_len=249):
+    def __init__(self, tokenizer, max_len, chunk_len=200, overlap_len=50, approach="all", max_size_dataset=None,
+                 file_location="./us-consumer-finance-complaints/consumer_complaints.csv", min_len=249):
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.overlap_len = overlap_len
@@ -112,7 +103,7 @@ class ConsumerComplaintsDataset1(Dataset):
         LE = LabelEncoder()
         train_raw['label'] = LE.fit_transform(train_raw['label'])
         train = train_raw.copy()
-        if(self.max_size_dataset):
+        if (self.max_size_dataset):
             train = train.loc[0:self.max_size_dataset, :]
         train = train.reindex(np.random.permutation(train.index))
         train['text'] = train.text.apply(self.clean_txt)
@@ -143,12 +134,12 @@ class ConsumerComplaintsDataset1(Dataset):
             a dictionnary that contains
              - [ids]  tokens ids
              - [mask] attention mask of each token
-             - [token_types_ids] the type ids of each token. note that each token in the same sequence has the same type ids
+             - [token_types_ids] the type ids of each token.
+               note that each token in the same sequence has the same type ids
              - [targets_list] list of all sample label after add overlap token as sample according to the approach used
              - [len] length of targets_list
         """
 
-        long_terms_token = []
         input_ids_list = []
         attention_mask_list = []
         token_type_ids_list = []
@@ -165,24 +156,19 @@ class ConsumerComplaintsDataset1(Dataset):
         token_type_ids_list.append(previous_token_type_ids)
         targets_list.append(targets)
 
-        # import pdb;pdb.set_trace()
         if self.approach != 'head':
-        #if remain and self.approach != 'head':
             remain = torch.tensor(remain, dtype=torch.long)
             idxs = range(len(remain)+self.chunk_len)
-            idxs = idxs[(self.chunk_len-self.overlap_len-2)
-                         ::(self.chunk_len-self.overlap_len-2)]
+            idxs = idxs[(self.chunk_len-self.overlap_len-2)::(self.chunk_len-self.overlap_len-2)]
             input_ids_first_overlap = previous_input_ids[-(
                 self.overlap_len+1):-1]
             start_token = torch.tensor([101], dtype=torch.long)
             end_token = torch.tensor([102], dtype=torch.long)
 
             for i, idx in enumerate(idxs):
-
                 if i == 0:
-                    #input_ids = torch.cat((input_ids_first_overlap, remain[:idx]))
-                    input_ids = torch.cat((input_ids_first_overlap.unsqueeze(0),remain[:idx]),1).squeeze(0)
-                
+                    input_ids = torch.cat((input_ids_first_overlap.unsqueeze(0), remain[:idx]), 1).squeeze(0)
+
                 elif i == len(idxs):
                     input_ids = remain[idx:]
                 elif previous_idx >= len(remain):
@@ -198,23 +184,13 @@ class ConsumerComplaintsDataset1(Dataset):
                 token_type_ids = torch.zeros(self.chunk_len, dtype=torch.long)
 
                 input_ids = torch.cat((start_token, input_ids, end_token))
-                # input_ids = torch.cat((start_token.unsqueeze(0), input_ids, end_token.unsqueeze(0)),1)
 
-
-                # if self.chunk_len-nb_token > 0:
-                #     padding = torch.zeros(self.chunk_len-nb_token, dtype=torch.long)
-                #
-                #     input_ids = torch.cat((input_ids, padding))
-                #     # input_ids = torch.cat((input_ids.squeeze(0), padding))
-
-                'pad input ids'
+                # Pad input ids
                 if len(input_ids) >= self.chunk_len:
                     input_ids = input_ids[:self.chunk_len]
                 else:
                     padding = torch.zeros(self.chunk_len - len(input_ids), dtype=torch.long)
                     input_ids = torch.cat((input_ids, padding))
-
-                # import pdb;pdb.set_trace()
 
                 input_ids_list.append(input_ids)
                 attention_mask_list.append(attention_mask)
@@ -226,8 +202,7 @@ class ConsumerComplaintsDataset1(Dataset):
                 token_type_ids_list = [token_type_ids_list[-1]]
                 targets_list = [targets_list[-1]]
 
-
-        return({
+        return ({
             'ids': input_ids_list,  # torch.tensor(ids, dtype=torch.long),
             # torch.tensor(mask, dtype=torch.long),
             'mask': attention_mask_list,
@@ -236,7 +211,6 @@ class ConsumerComplaintsDataset1(Dataset):
             'targets': targets_list,
             'len': [torch.tensor(len(targets_list), dtype=torch.long)]
         })
-
 
     def __getitem__(self, idx):
         """  Return a single tokenized sample at a given positon [idx] from data"""
