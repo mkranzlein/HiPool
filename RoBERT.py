@@ -7,26 +7,9 @@
 #
 ##############################################################
 import torch
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
-import re
-from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer
-from transformers import BertForSequenceClassification, AdamW, BertConfig
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
-from torch.utils.data.sampler import SubsetRandomSampler
-import transformers
-# get_linear_schedule_with_warmup
-from transformers import RobertaTokenizer, BertTokenizer, RobertaModel, BertModel, AdamW
-from transformers import get_linear_schedule_with_warmup
-import time
 
 
-class RoBERT_Model(nn.Module):
+class RoBERT_Model(torch.nn.Module):
     """ Make an LSTM model over a fine tuned bert model.
 
     Parameters
@@ -39,8 +22,8 @@ class RoBERT_Model(nn.Module):
     def __init__(self, bertFineTuned):
         super(RoBERT_Model, self).__init__()
         self.bertFineTuned = bertFineTuned
-        self.lstm = nn.LSTM(768, 100, num_layers=1, bidirectional=False)
-        self.out = nn.Linear(100, 10)
+        self.lstm = torch.nn.LSTM(768, 100, num_layers=1, bidirectional=False)
+        self.out = torch.nn.Linear(100, 10)
 
     def forward(self, ids, mask, token_type_ids, lengt):
         """ Define how to performed each call
@@ -50,7 +33,7 @@ class RoBERT_Model(nn.Module):
         ids: array
             -
         mask: array
-            - 
+            -
         token_type_ids: array
             -
         lengt: int
@@ -66,10 +49,10 @@ class RoBERT_Model(nn.Module):
 
         seq_lengths = torch.LongTensor([x for x in map(len, chunks_emb)])
 
-        batch_emb_pad = nn.utils.rnn.pad_sequence(
+        batch_emb_pad = torch.nn.utils.rnn.pad_sequence(
             chunks_emb, padding_value=-91, batch_first=True)
         batch_emb = batch_emb_pad.transpose(0, 1)  # (B,L,D) -> (L,B,D)
-        lstm_input = nn.utils.rnn.pack_padded_sequence(
+        lstm_input = torch.nn.utils.rnn.pack_padded_sequence(
             batch_emb, seq_lengths.cpu().numpy(), batch_first=False, enforce_sorted=False)
 
         packed_output, (h_t, h_c) = self.lstm(lstm_input, )  # (h_t, h_c))
