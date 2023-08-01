@@ -13,19 +13,8 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import re
 import math
-from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer
-from transformers import BertForSequenceClassification, AdamW, BertConfig
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
-from torch.utils.data.sampler import SubsetRandomSampler
-import transformers
-# get_linear_schedule_with_warmup
-from transformers import RobertaTokenizer, BertTokenizer, RobertaModel, BertModel, AdamW
-from transformers import get_linear_schedule_with_warmup
-import time
+from torch.utils.data import Dataset
 
 
 class DatasetSplit(Dataset):
@@ -37,7 +26,7 @@ class DatasetSplit(Dataset):
     tokenizer: BertTokenizer
         transform data into feature that bert understand
     max_len: int
-        the max number of token in a sequence in bert tokenization. 
+        the max number of token in a sequence in bert tokenization.
     overlap_len: int
         the maximum number of overlap token.
     chunk_len: int
@@ -56,7 +45,10 @@ class DatasetSplit(Dataset):
     label: array of shape (n_keept_sample,)
         data labels
     """
-    def __init__(self, tokenizer, max_len, chunk_len=200, overlap_len=50, approach="all", max_size_dataset=None, file_location="./us-consumer-finance-complaints/consumer_complaints.csv", min_len=249):
+    def __init__(self, tokenizer, max_len, chunk_len=200,
+                 overlap_len=50, approach="all",
+                 max_size_dataset=None,
+                 file_location="./us-consumer-finance-complaints/consumer_complaints.csv", min_len=249):
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.overlap_len = overlap_len
@@ -66,8 +58,6 @@ class DatasetSplit(Dataset):
         self.max_size_dataset = max_size_dataset
         self.data, self.label = self.process_data(file_location,)
         self.num_class = 10
-
-
 
     def process_data(self, file_location):
         """ Preprocess the text and label columns as describe in the paper.
@@ -107,19 +97,17 @@ class DatasetSplit(Dataset):
                          'product'] = 'Money transfer, virtual currency, or money service'
             train_raw = train_raw.rename(
                 columns={'consumer_complaint_narrative': 'text', 'product': 'label'})
-        elif file_location.startswith('./IMDB'):
-            df = pd.read_csv("./IMDB/IMDB.csv")
+        elif file_location.startswith('imdb'):
+            df = pd.read_csv("data/imdb.csv")
             train_raw = df[df.review.notnull()]
             train_raw = train_raw[['review', 'sentiment']]
             train_raw.reset_index(inplace=True, drop=True)
             train_raw = train_raw.rename(columns={'review': 'text', 'sentiment': 'label'})
 
-
-
         LE = LabelEncoder()
         train_raw['label'] = LE.fit_transform(train_raw['label'])
         train = train_raw.copy()
-        if(self.max_size_dataset):
+        if (self.max_size_dataset):
             train = train.loc[0:self.max_size_dataset, :]
         train = train.reindex(np.random.permutation(train.index))
         train['text'] = train.text.apply(self.clean_txt)
@@ -151,37 +139,24 @@ class DatasetSplit(Dataset):
             a dictionnary that contains
              - [ids]  tokens ids
              - [mask] attention mask of each token
-             - [token_types_ids] the type ids of each token. note that each token in the same sequence has the same type ids
+             - [token_types_ids] the type ids of each token.
+               Note that each token in the same sequence has the same type ids.
              - [targets_list] list of all sample label after add overlap token as sample according to the approach used
              - [len] length of targets_list
         """
 
-        long_terms_token = []
         input_ids_list = []
         attention_mask_list = []
         token_type_ids_list = []
         targets_list = []
 
         previous_input_ids = data_tokenize["input_ids"].reshape(-1)
-        previous_attention_mask = data_tokenize["attention_mask"].reshape(-1)
-        previous_token_type_ids = data_tokenize["token_type_ids"].reshape(-1)
-        remain = data_tokenize.get("overflowing_tokens")
         targets = torch.tensor(targets, dtype=torch.int)
-
-        # input_ids_list.append(previous_input_ids)
-        # attention_mask_list.append(previous_attention_mask)
-        # token_type_ids_list.append(previous_token_type_ids)
-        # targets_list.append(targets)
-
-
-
-        'sementation new: Dec, 2021'
-
 
         start_token = torch.tensor([101], dtype=torch.long)
         end_token = torch.tensor([102], dtype=torch.long)
 
-        total_token = len(previous_input_ids) -2 # remove head 101, tail 102
+        total_token = len(previous_input_ids) - 2  # remove head 101, tail 102
         stride = self.overlap_len - 2
         number_chunks = math.floor(total_token/stride)
 
@@ -205,7 +180,7 @@ class DatasetSplit(Dataset):
             token_type_ids_list.append(type_list)
             targets_list.append(targets)
 
-        return({
+        return ({
             'ids': input_ids_list,  # torch.tensor(ids, dtype=torch.long),
             # torch.tensor(mask, dtype=torch.long),
             'mask': attention_mask_list,
@@ -240,9 +215,7 @@ class DatasetSplit(Dataset):
             return_overflowing_tokens=True,
             return_tensors='pt')
 
-
         long_token = self.long_terms_tokenizer(data, targets)
-
 
         return long_token
 
