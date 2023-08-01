@@ -1,13 +1,15 @@
 'Dense GAT: https://github.com/Diego999/pyGAT'
+
 import torch
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+
+
 class SpecialSpmmFunction(torch.autograd.Function):
     """Special function for only sparse region backpropataion layer."""
     @staticmethod
     def forward(ctx, indices, values, shape, b):
-        assert indices.requires_grad == False
+        assert indices.requires_grad is False
         a = torch.sparse_coo_tensor(indices, values, shape)
         ctx.save_for_backward(a, b)
         ctx.N = shape[0]
@@ -92,7 +94,6 @@ class SpGraphAttentionLayer(nn.Module):
         else:
             # if this layer is last layer,
             return h_prime.unsqueeze(0)
-
 
 
 '''
