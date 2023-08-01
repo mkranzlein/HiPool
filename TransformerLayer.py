@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.functional as F
+import argparse
 
 
 class LayerNorm(nn.Module):
@@ -26,6 +27,7 @@ class LayerNorm(nn.Module):
         std = x.std(-1, keepdim=True)
         return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
 
+
 class SublayerConnection(nn.Module):
     """
     A residual connection followed by a layer norm.
@@ -41,6 +43,7 @@ class SublayerConnection(nn.Module):
         "Apply residual connection to any sublayer with the same size."
         return x + self.dropout(sublayer(self.norm(x)))
 
+
 class PositionwiseFeedForward(nn.Module):
     "Implements FFN equation."
 
@@ -54,6 +57,7 @@ class PositionwiseFeedForward(nn.Module):
     def forward(self, x):
         return self.w_2(self.dropout(self.activation(self.w_1(x))))
 
+
 class GELU(nn.Module):
     """
     Paper Section 3.4, last paragraph notice that BERT used the GELU instead of RELU
@@ -61,18 +65,20 @@ class GELU(nn.Module):
     def forward(self, x):
         return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
 
+
 class TokenEmbedding(nn.Embedding):
     def __init__(self, vocab_size, embed_size=512):
-        super(TokenEmbedding,self).__init__(vocab_size, embed_size, padding_idx=0)
+        super().__init__(vocab_size, embed_size, padding_idx=0)
+
 
 class SegmentEmbedding(nn.Embedding):
     def __init__(self, embed_size=512):
-        super(SegmentEmbedding,self).__init__(3, embed_size, padding_idx=0)
+        super().__init__(3, embed_size, padding_idx=0)
+
 
 class PositionalEmbedding(nn.Module):
-
     def __init__(self, d_model, max_len=512):
-        super(PositionalEmbedding,self).__init__()
+        super().__init__()
 
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
@@ -91,7 +97,6 @@ class PositionalEmbedding(nn.Module):
         return self.pe[:, :x.size(1)]
 
 
-
 class BERTEmbedding(nn.Module):
     """
     BERT Embedding which is consisted with under features
@@ -107,7 +112,7 @@ class BERTEmbedding(nn.Module):
         :param embed_size: embedding size of token embedding
         :param dropout: dropout rate
         """
-        super(BERTEmbedding,self).__init__()
+        super().__init__()
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(d_model=self.token.embedding_dim)
         self.segment = SegmentEmbedding(embed_size=self.token.embedding_dim)
@@ -117,6 +122,7 @@ class BERTEmbedding(nn.Module):
     def forward(self, sequence, segment_label):
         x = self.token(sequence) + self.position(sequence) + self.segment(segment_label)
         return self.dropout(x)
+
 
 class Attention(nn.Module):
     """
@@ -137,13 +143,14 @@ class Attention(nn.Module):
 
         return torch.matmul(p_attn, value), p_attn
 
+
 class MultiHeadedAttention(nn.Module):
     """
     Take in model size and number of heads.
     """
 
     def __init__(self, h, d_model, dropout=0.1):
-        super(MultiHeadedAttention,self).__init__()
+        super().__init__()
         assert d_model % h == 0
 
         # We assume d_v always equals d_k
@@ -160,8 +167,8 @@ class MultiHeadedAttention(nn.Module):
         batch_size = query.size(0)
 
         # 1) Do all the linear projections in batch from d_model => h x d_k
-        query, key, value = [l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-                             for l, x in zip(self.linear_layers, (query, key, value))]
+        query, key, value = [layer(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+                             for layer, x in zip(self.linear_layers, (query, key, value))]
 
         # 2) Apply attention on all the projected vectors in batch.
         x, attn = self.attention(query, key, value, mask=mask, dropout=self.dropout)
@@ -186,7 +193,7 @@ class TransformerBlock(nn.Module):
         :param dropout: dropout rate
         """
 
-        super(TransformerBlock,self).__init__()
+        super().__init__()
         self.attention = MultiHeadedAttention(h=attn_heads, d_model=hidden)
         self.feed_forward = PositionwiseFeedForward(d_model=hidden, d_ff=feed_forward_hidden, dropout=dropout)
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
@@ -194,15 +201,8 @@ class TransformerBlock(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x):
-
-
         x = self.input_sublayer(x, lambda _x: self.attention.forward(_x, _x, _x, mask=None))
-
-
         x = self.output_sublayer(x, self.feed_forward)
-
-
-
         return self.dropout(x)
 
 
@@ -247,16 +247,10 @@ class BERT(nn.Module):
         for transformer in self.transformer_blocks:
             x = transformer.forward(x)
 
-
-
         'same shape'
         # torch.Size([2, 3, 128])
 
         return x
-
-
-import argparse
-
 
 
 def train():
@@ -295,14 +289,10 @@ def train():
     print("Building BERT model")
     bert = BERT(hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads).to(device)
 
-
     test = torch.rand([2, 3, 128]).to(device)
+    output = bert(test)  # noqa F841
 
-    output = bert(test)
-    import pdb;
-    pdb.set_trace()
-
-    print ('BERT model...', bert)
+    print('BERT model...', bert)
 
 
 if __name__ == "__main__":
