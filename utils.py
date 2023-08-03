@@ -15,7 +15,7 @@ import numpy as np
 import time
 
 
-def my_collate1(batches):
+def collate(batches):
     # Return batches
     return [{key: torch.stack(value) for key, value in batch.items()} for batch in batches]
 
@@ -23,7 +23,6 @@ def my_collate1(batches):
 def loss_fun(outputs, targets):
     loss = torch.nn.CrossEntropyLoss()
     return loss(outputs, targets)
-    # return nn.BCEWithLogitsLoss()(outputs, targets)
 
 
 def evaluate(target, predicted):
@@ -39,54 +38,6 @@ def evaluate(target, predicted):
         "true_prediction": true_prediction,
         "false_prediction": false_prediction,
     }
-
-
-def train_loop_fun1_orig(data_loader, model, optimizer, device, scheduler=None):
-    model.train()
-    t0 = time.time()
-    losses = []
-    # import pdb;pdb.set_trace()
-    for batch_idx, batch in enumerate(data_loader):
-        #         model.half()
-        #         ids_batch=[data["ids"] for data in batch]
-        #         mask_batch=[data["mask"] for data in batch]
-        #         token_type_ids_batch = [data["token_type_ids"] for data in batch]
-        #         targets_batch = [data["targets"] for data in batch]
-        #         lengt_batch=[data['len'] for data in batch]
-
-        ids = [data["ids"] for data in batch]  # size of 8
-        mask = [data["mask"] for data in batch]
-        token_type_ids = [data["token_type_ids"] for data in batch]
-        targets = [data["targets"] for data in batch]  # length: 8
-        length = [data['len'] for data in batch]  # [tensor([3]), tensor([7]), tensor([2]), tensor([4]), tensor([2]), tensor([4]), tensor([2]), tensor([3])] # noqa E501
-
-        ids = torch.cat(ids)
-        mask = torch.cat(mask)
-        token_type_ids = torch.cat(token_type_ids)
-        targets = torch.cat(targets)
-        length = torch.cat(length)
-
-        ids = ids.to(device, dtype=torch.long)
-        mask = mask.to(device, dtype=torch.long)
-        token_type_ids = token_type_ids.to(device, dtype=torch.long)
-        targets = targets.to(device, dtype=torch.long)
-
-        optimizer.zero_grad()
-
-        outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-
-        loss = loss_fun(outputs, targets)
-        loss.backward()
-        model.float()
-        optimizer.step()
-        if scheduler:
-            scheduler.step()
-        losses.append(loss.item())
-        if batch_idx % 500 == 0:
-            print(
-                f"___ batch index = {batch_idx} / {len(data_loader)} ({100*batch_idx / len(data_loader):.2f}%), loss = {np.mean(losses[-10:]):.4f}, time = {time.time()-t0:.2f} secondes ___")  # noqa E501
-            t0 = time.time()
-    return losses
 
 
 def get_graph_features(graph):
@@ -133,7 +84,7 @@ def graph_feature_stats(graph_feature_list):
     for feature_dict in graph_feature_list:
         for key in stats.keys():
             stats[key].append(feature_dict[key])
-    'get mean'
+    # Get mean
     stats_mean = {k: sum(v)/len(v) for (k, v) in stats.items()}
     return stats_mean
 
@@ -198,43 +149,6 @@ def eval_loop_fun1(data_loader, model, device):
         fin_targets.append(target_labels.cpu().detach().numpy())
         fin_outputs.append(torch.softmax(outputs, dim=1).cpu().detach().numpy())
     return np.concatenate(fin_outputs), np.concatenate(fin_targets), losses
-#     return np.vstack(fin_outputs), np.vstack(fin_targets), losses
-
-
-def eval_loop_fun1_orgi(data_loader, model, device):
-    model.eval()
-    fin_targets = []
-    fin_outputs = []
-    losses = []
-    for batch_idx, batch in enumerate(data_loader):
-
-        #         model.half()
-        ids = [data["ids"] for data in batch]
-        mask = [data["mask"] for data in batch]
-        token_type_ids = [data["token_type_ids"] for data in batch]
-        targets = [data["targets"] for data in batch]
-        lengt = [data['len'] for data in batch]
-
-        ids = torch.cat(ids)
-        mask = torch.cat(mask)
-        token_type_ids = torch.cat(token_type_ids)
-        targets = torch.cat(targets)
-        lengt = torch.cat(lengt)
-
-        ids = ids.to(device, dtype=torch.long)
-        mask = mask.to(device, dtype=torch.long)
-        token_type_ids = token_type_ids.to(device, dtype=torch.long)
-        targets = targets.to(device, dtype=torch.long)
-        with torch.no_grad():
-            outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-            loss = loss_fun(outputs, targets)
-            losses.append(loss.item())
-
-        fin_targets.append(targets.cpu().detach().numpy())
-        fin_outputs.append(torch.softmax(
-            outputs, dim=1).cpu().detach().numpy())
-    return np.concatenate(fin_outputs), np.concatenate(fin_targets), losses
-#     return np.vstack(fin_outputs), np.vstack(fin_targets), losses
 
 
 def rnn_train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):

@@ -17,7 +17,7 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import Dataset
 
 
-class ConsumerComplaintsDataset1(Dataset):
+class ConsumerComplaintsDataset(Dataset):
     """ Make preprocecing, tokenization and transform consumer complaints
     dataset into pytorch DataLoader instance.
 

@@ -11,9 +11,8 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from transformers import get_linear_schedule_with_warmup
 import time
 
-from utils import my_collate1
-from utils import *
-from Custom_Dataset_Class import ConsumerComplaintsDataset1
+from utils import collate
+from Custom_Dataset_Class import ConsumerComplaintsDataset
 from Bert_Classification import Bert_Classification_Model
 from utils import train_loop_fun1, evaluate, eval_loop_fun1
 
@@ -57,21 +56,6 @@ print(train_raw.shape)
 # Select only the column 'consumer_complaint_narrative' and 'product'
 train_raw = train_raw[['consumer_complaint_narrative', 'product']]
 
-'count starts'
-# word_count = []
-# sent_count = []
-# from nltk.tokenize import word_tokenize,sent_tokenize
-# for row in train_raw['consumer_complaint_narrative']:
-#     text = row
-#     sents = sent_tokenize(text.strip())
-#     sent_count.append(len(sents))
-#
-#     words = word_tokenize(text.strip())
-#     word_count.append(len(words))
-'count ends'
-
-# import pdb;pdb.set_trace()
-
 train_raw.reset_index(inplace=True, drop=True)
 train_raw.head()
 
@@ -106,7 +90,7 @@ OVERLAP_LEN = 50
 print('Loading BERT tokenizer...')
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
-dataset = ConsumerComplaintsDataset1(
+dataset = ConsumerComplaintsDataset(
     tokenizer=bert_tokenizer,
     min_len=MIN_LEN,
     max_len=MAX_LEN,
@@ -131,12 +115,12 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_data_loader = DataLoader(
     dataset,
     batch_size=TRAIN_BATCH_SIZE,
-    sampler=train_sampler, collate_fn=my_collate1)
+    sampler=train_sampler, collate_fn=collate)
 
 valid_data_loader = DataLoader(
     dataset,
     batch_size=TRAIN_BATCH_SIZE,
-    sampler=valid_sampler, collate_fn=my_collate1)
+    sampler=valid_sampler, collate_fn=collate)
 
 print('Model building done.')
 

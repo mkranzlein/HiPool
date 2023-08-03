@@ -14,7 +14,6 @@ from torch_geometric.utils import from_networkx
 import numpy as np
 import transformers
 from torch.nn.utils.rnn import pad_sequence
-from TransformerLayer import BERT
 from utils import kronecker_generator
 
 
@@ -22,7 +21,7 @@ class Bert_Classification_Model(nn.Module):
     """ A Model for bert fine tuning """
 
     def __init__(self):
-        super(Bert_Classification_Model, self).__init__()
+        super().__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
         self.out = nn.Linear(768, 10)
@@ -49,125 +48,11 @@ class Bert_Classification_Model(nn.Module):
         return self.out(results[1])
 
 
-class Hi_Bert_Classification_Model(nn.Module):
-    """ A Model for bert fine tuning """
-
-    def __init__(self, num_class, device, pooling_method='mean'):
-        super(Hi_Bert_Classification_Model, self).__init__()
-        self.bert_path = 'bert-base-uncased'
-        self.bert = transformers.BertModel.from_pretrained(self.bert_path)
-        self.out = nn.Linear(768, num_class)
-        self.device = device
-        self.pooling_method = pooling_method
-
-    def forward(self, ids, mask, token_type_ids):
-        if self.pooling_method == "mean":
-            emb_pool = torch.stack([torch.mean(x.float(), 0) for x in ids]).long().to(self.device)
-        elif self.pooling_method == "max":
-            emb_pool = torch.stack([torch.max(x.float(), 0)[0] for x in ids]).long().to(self.device)
-        emb_mask = torch.stack([x[0] for x in mask]).long().to(self.device)
-        emb_token_type_ids = torch.stack([x[0] for x in token_type_ids]).long().to(self.device)
-
-        'original'
-        results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
-
-        return self.out(results[1])  # (batch_size, class_number)
-
-
-class Hi_Bert_Classification_Model_LSTM(nn.Module):
-    """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
-
-    def __init__(self, num_class, device, pooling_method='mean'):
-        super(Hi_Bert_Classification_Model_LSTM, self).__init__()
-        self.bert_path = 'bert-base-uncased'
-        self.bert = transformers.BertModel.from_pretrained(self.bert_path)
-
-        self.lstm_layer_number = 2
-        self.lstm_hidden_size = 128
-
-        self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
-        self.device = device
-        self.pooling_method = pooling_method
-
-        self.lstm = nn.LSTM(
-            input_size=self.lstm_hidden_size,
-            hidden_size=self.lstm_hidden_size,
-            num_layers=self.lstm_layer_number,
-            dropout=0.2,
-        )
-        self.out = nn.Linear(self.lstm_hidden_size, num_class)
-
-    def forward(self, ids, mask, token_type_ids):
-
-        'encode bert'
-        bert_ids = pad_sequence(ids).permute(1, 0, 2).long().to(self.device)
-        bert_mask = pad_sequence(mask).permute(1, 0, 2).long().to(self.device)
-        bert_token_type_ids = pad_sequence(token_type_ids).permute(1, 0, 2).long().to(self.device)
-        batch_bert = []
-        for emb_pool, emb_mask, emb_token_type_ids in zip(bert_ids, bert_mask, bert_token_type_ids):
-            results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
-            batch_bert.append(results[1])
-
-        sent_bert = self.bert_lstm(torch.stack(batch_bert, 0))  # (batch, step, 128)
-
-        batch_size = sent_bert.shape[0]
-        lstm_input = sent_bert.permute(1, 0, 2)
-
-        h0 = c0 = torch.zeros(self.lstm_layer_number, batch_size, self.lstm_hidden_size).to(self.device)
-
-        outputs, (ht, ct) = self.lstm(lstm_input, (h0, c0))
-
-        lstm_out = self.out(outputs[-1])  # shape torch.Size([batch, 128])
-
-        return lstm_out  # (batch_size, class_number)
-
-
-class Hi_Bert_Classification_Model_BERT(nn.Module):
-    """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
-
-    def __init__(self, num_class, device, pooling_method='mean'):
-        super(Hi_Bert_Classification_Model_BERT, self).__init__()
-        self.bert_path = 'bert-base-uncased'
-        self.bert = transformers.BertModel.from_pretrained(self.bert_path)
-
-        self.lstm_layer_number = 2
-        self.lstm_hidden_size = 128
-
-        self.device = device
-        self.pooling_method = pooling_method
-
-        self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
-        self.BERTLayer = BERT(hidden=self.lstm_hidden_size, n_layers=1, attn_heads=8).to(device)
-        self.out = nn.Linear(self.lstm_hidden_size, num_class).to(device)
-
-    def forward(self, ids, mask, token_type_ids):
-
-        # encode bert
-        bert_ids = pad_sequence(ids).permute(1, 0, 2).long().to(self.device)
-        bert_mask = pad_sequence(mask).permute(1, 0, 2).long().to(self.device)
-        bert_token_type_ids = pad_sequence(token_type_ids).permute(1, 0, 2).long().to(self.device)
-        batch_bert = []
-        for emb_pool, emb_mask, emb_token_type_ids in zip(bert_ids, bert_mask, bert_token_type_ids):
-            results = self.bert(emb_pool, attention_mask=emb_mask, token_type_ids=emb_token_type_ids)
-            batch_bert.append(results[1])
-
-        sent_bert = torch.stack(batch_bert, 0)
-
-        # BERT starts
-        lstm_input = sent_bert.permute(1, 0, 2)
-
-        lstm_input = self.mapping(lstm_input)
-        lstm_output = self.BERTLayer(lstm_input)
-        # lstm ends
-
-        return self.out(lstm_output[-1])  # (batch_size, class_number)
-
-
 class Hi_Bert_Classification_Model_GCN(nn.Module):
     """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
 
     def __init__(self, args, num_class, device, adj_method, pooling_method='mean'):
-        super(Hi_Bert_Classification_Model_GCN, self).__init__()
+        super().__init__()
         self.args = args
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
@@ -183,7 +68,7 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
 
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
 
-        'start GCN'
+        # Start GCN
         if self.args.graph_type == 'gcn':
             self.gcn = GCN(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
         elif self.args.graph_type == 'gat':
@@ -288,7 +173,7 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
     """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
 
     def __init__(self, num_class, device, adj_method, pooling_method='mean'):
-        super(Hi_Bert_Classification_Model_GCN_tokenlevel, self).__init__()
+        super().__init__()
         self.bert_path = 'bert-base-uncased'
         self.bert = transformers.BertModel.from_pretrained(self.bert_path)
 
@@ -303,6 +188,7 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
 
         # start GCN
+        # MK: use highpool here, like in the non token level version of this class
         # self.gcn = GCN(input_dim=self.lstm_hidden_size,hidden_dim=32,output_dim=num_class).to(device)
         self.gcn = GAT(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
         self.adj_method = adj_method

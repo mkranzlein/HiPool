@@ -10,8 +10,8 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from transformers import get_linear_schedule_with_warmup
 import time
 
-from utils import *
-from Custom_Dataset_Class import ConsumerComplaintsDataset1
+from utils import collate, rnn_eval_loop_fun1, rnn_train_loop_fun1, evaluate
+from Custom_Dataset_Class import ConsumerComplaintsDataset
 from BERT_Hierarchical import BERT_Hierarchical_BERT_Model
 import warnings
 warnings.filterwarnings("ignore")
@@ -88,7 +88,7 @@ OVERLAP_LEN = 50
 print('Loading BERT tokenizer...')
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
-dataset = ConsumerComplaintsDataset1(
+dataset = ConsumerComplaintsDataset(
     tokenizer=bert_tokenizer,
     min_len=MIN_LEN,
     max_len=MAX_LEN,
@@ -113,13 +113,13 @@ train_data_loader = DataLoader(
     dataset,
     batch_size=TRAIN_BATCH_SIZE,
     sampler=train_sampler,
-    collate_fn=my_collate1)
+    collate_fn=collate)
 
 valid_data_loader = DataLoader(
     dataset,
     batch_size=TRAIN_BATCH_SIZE,
     sampler=valid_sampler,
-    collate_fn=my_collate1)
+    collate_fn=collate)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)

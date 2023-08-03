@@ -10,7 +10,6 @@ Tested on python 3.8.8.
 
 `conda env create -f environment.yml`
 
-
 ## Running
 ```CUDA_VISIBLE_DEVICES=1 python train_imdb.py --sentlen 50 --adj_method bigbird --level sent --graph_type gat --epoch 10```
 
@@ -37,4 +36,3 @@ default dataset: consumer_complaints
   url={https://arxiv.org/abs/2305.03319}
 }
 ```
-

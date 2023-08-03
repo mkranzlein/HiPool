@@ -1,18 +1,19 @@
+import argparse
+import os
+import time
+
+from Bert_Classification import Hi_Bert_Classification_Model_GCN, Hi_Bert_Classification_Model_GCN_tokenlevel
+from Dataset_Split_Class import DatasetSplit
+from utils import collate
+from utils import train_loop_fun1, evaluate, eval_loop_fun1
+
 import torch
 import numpy as np
+
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import BertTokenizer, AdamW  # get_linear_schedule_with_warmup
+from transformers import BertTokenizer, AdamW
 from transformers import get_linear_schedule_with_warmup
-
-import time
-import os
-from utils import *
-from Dataset_Split_Class import DatasetSplit
-from Bert_Classification import Hi_Bert_Classification_Model_GCN, Hi_Bert_Classification_Model_GCN_tokenlevel
-import argparse
-from utils import my_collate1
-from utils import train_loop_fun1, evaluate, eval_loop_fun1
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -44,9 +45,6 @@ parser.add_argument('--graph_type', type=str, default='graphsage', help='Graph e
 parser.add_argument('--adj_method', type=str, default='path_graph',
                     help='choose from [fc,dense_gnm_random_graph,erdos_renyi_graph,binomial_graph,path_graph,complete]')
 parser.add_argument('--level', type=str, default='sent', help='level: sent or tok')
-
-# parser.add_argument('--model_dir', type=str, default='complaints',
-#                     help='the dir for saving models')
 args = parser.parse_args()
 
 model_dir = args.dataset
@@ -63,7 +61,6 @@ MAX_LEN = 1024
 GROUP_NUM = 10
 'group_num 50, simple model 82%'
 
-
 # CHUNK_LEN=200
 CHUNK_LEN = args.sentlen  # sentence-level
 OVERLAP_LEN = int(args.sentlen/2)
@@ -72,7 +69,6 @@ lr = 2e-5  # 1e-3
 
 print('Loading BERT tokenizer...')
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-
 
 print('Loading data...', args.dataset)
 dataset = DatasetSplit(
@@ -83,10 +79,6 @@ dataset = DatasetSplit(
     # max_size_dataset=MAX_SIZE_DATASET,
     # file_location='./IMDB',
     file_location=args.dataset)
-
-# train_size = int(0.8 * len(dataset))
-# test_size = len(dataset) - train_size
-# train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
 # Creating data indices for training and validation splits:
 dataset_size = len(dataset)
@@ -104,12 +96,12 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_data_loader = DataLoader(
     dataset,
     batch_size=TRAIN_BATCH_SIZE,
-    sampler=train_sampler, collate_fn=my_collate1)
+    sampler=train_sampler, collate_fn=collate)
 
 valid_data_loader = DataLoader(
     dataset,
     batch_size=TRAIN_BATCH_SIZE,
-    sampler=valid_sampler, collate_fn=my_collate1)
+    sampler=valid_sampler, collate_fn=collate)
 
 print('Model building done.')
 
@@ -118,11 +110,6 @@ print('Using device:', device)
 
 num_training_steps = int(len(dataset) / TRAIN_BATCH_SIZE * EPOCH)
 
-# model=Bert_Classification_Model().to(device)
-# model=Hi_Bert_Classification_Model(num_class=dataset.num_class,device=device).to(device)
-
-# model=Hi_Bert_Classification_Model_LSTM(num_class=dataset.num_class,device=device).to(device)
-# model=Hi_Bert_Classification_Model_BERT(num_class=dataset.num_class,device=device).to(device)
 if args.level == 'sent':
     model = Hi_Bert_Classification_Model_GCN(args=args, num_class=dataset.num_class, device=device,
                                              adj_method=args.adj_method).to(device)

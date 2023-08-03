@@ -195,15 +195,6 @@ class DatasetSplit(Dataset):
 
         consumer_complaint = str(self.data[idx])
         targets = int(self.label[idx])
-        # data = self.tokenizer.encode_plus(
-        #         #     consumer_complaint,
-        #         #     max_length=self.chunk_len,
-        #         #     pad_to_max_length=True,
-        #         #     add_special_tokens=True,
-        #         #     return_attention_mask=True,
-        #         #     return_token_type_ids=True,
-        #         #     return_overflowing_tokens=True,
-        #         #     return_tensors='pt')
 
         data = self.tokenizer.encode_plus(
             consumer_complaint,
