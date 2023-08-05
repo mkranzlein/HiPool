@@ -7,8 +7,19 @@ A modified implementation of HiPool to support experiments on [CuRIAM](https://a
 - Original HiPool repo: https://github.com/irenezihuili/hipool
 - HiPool's implementation is based on: https://github.com/helmy-elrais/RoBERT_Recurrence_over_BERT/blob/master/train.ipynb
 
-## Install
-`conda env create -f environment.yml`
+## Setup
+1. Create conda environment.
+    ```
+    conda env create -f environment.yml
+    conda activate hipool
+    ```
+2. Install hipool locally.
+    ```
+    pip install --upgrade build
+    pip install -e .
+    ```
+3. Download datasets.
+    - CuRIAM: TODO
 
 ## Cite HiPool
 ```
