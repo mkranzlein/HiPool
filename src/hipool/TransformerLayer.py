@@ -5,12 +5,13 @@ https://neptune.ai/blog/how-to-code-bert-using-pytorch-tutorial
 code from :https://github.com/codertimo/BERT-pytorch/tree/d10dc4f9d5a6f2ca74380f62039526eb7277c671/bert_pytorch
 
 '''
+import argparse
+import math
 
 import torch
-import torch.nn as nn
-import math
 import torch.nn.functional as F
-import argparse
+
+from torch import nn
 
 
 class LayerNorm(nn.Module):

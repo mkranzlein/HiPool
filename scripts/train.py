@@ -1,22 +1,22 @@
-import torch
-import pandas as pd
-import numpy as np
-
-from transformers import BertTokenizer
-from transformers import AdamW
-from torch.utils.data import DataLoader
-
-from torch.utils.data.sampler import SubsetRandomSampler
-
-from transformers import get_linear_schedule_with_warmup
 import time
-
-from utils import collate
-from Custom_Dataset_Class import ConsumerComplaintsDataset
-from Bert_Classification import Bert_Classification_Model
-from utils import train_loop_fun1, evaluate, eval_loop_fun1
-
 import warnings
+
+from hipool.utils import collate
+from hipool.Custom_Dataset_Class import ConsumerComplaintsDataset
+from hipool.Bert_Classification import Bert_Classification_Model
+from hipool.utils import train_loop_fun1, evaluate, eval_loop_fun1
+
+import numpy as np
+import pandas as pd
+import torch
+
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
+from transformers import AdamW
+from transformers import BertTokenizer
+from transformers import get_linear_schedule_with_warmup
+
+
 warnings.filterwarnings("ignore")
 
 # If there's a GPU available...

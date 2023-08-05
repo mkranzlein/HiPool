@@ -7,13 +7,14 @@
 #
 ##############################################################
 
-import torch
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
 import re
 import math
 
+import numpy as np
+import pandas as pd
+import torch
+
+from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import Dataset
 
 

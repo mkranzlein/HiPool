@@ -1,19 +1,19 @@
-import torch
-import pandas as pd
+import time
+import warnings
+
+from hipool.utils import collate, rnn_eval_loop_fun1, rnn_train_loop_fun1, evaluate
+from hipool.Custom_Dataset_Class import ConsumerComplaintsDataset
+from hipool.BERT_Hierarchical import BERT_Hierarchical_BERT_Model
+
 import numpy as np
-from transformers import BertTokenizer
-from transformers import AdamW
+import pandas as pd
+import torch
 
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-
+from transformers import AdamW, BertTokenizer
 from transformers import get_linear_schedule_with_warmup
-import time
 
-from utils import collate, rnn_eval_loop_fun1, rnn_train_loop_fun1, evaluate
-from Custom_Dataset_Class import ConsumerComplaintsDataset
-from BERT_Hierarchical import BERT_Hierarchical_BERT_Model
-import warnings
 warnings.filterwarnings("ignore")
 
 

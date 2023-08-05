@@ -7,10 +7,12 @@
 #
 ##############################################################
 
+from hipool.TransformerLayer import BERT
+
 import torch
-import torch.nn as nn
 import transformers
-from TransformerLayer import BERT
+
+from torch import nn
 
 
 class BERT_Hierarchical_BERT_Model(nn.Module):

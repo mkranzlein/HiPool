@@ -1,21 +1,21 @@
 import argparse
 import os
 import time
+import warnings
 
-from Bert_Classification import Hi_Bert_Classification_Model_GCN, Hi_Bert_Classification_Model_GCN_tokenlevel
-from Dataset_Split_Class import DatasetSplit
-from utils import collate
-from utils import train_loop_fun1, evaluate, eval_loop_fun1
+from hipool.Bert_Classification import Hi_Bert_Classification_Model_GCN, Hi_Bert_Classification_Model_GCN_tokenlevel
+from hipool.Dataset_Split_Class import DatasetSplit
+from hipool.utils import collate
+from hipool.utils import train_loop_fun1, evaluate, eval_loop_fun1
 
 import torch
 import numpy as np
 
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import BertTokenizer, AdamW
+from transformers import AdamW, BertTokenizer
 from transformers import get_linear_schedule_with_warmup
 
-import warnings
 warnings.filterwarnings("ignore")
 
 # If there's a GPU available...

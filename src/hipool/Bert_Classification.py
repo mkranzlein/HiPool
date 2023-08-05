@@ -5,16 +5,18 @@
 # simple classification head.
 #
 ##############################################################
-from Graph_Models import GCN, GAT, GraphSAGE, SimpleRank, LinearFirst, DiffPool, HiPool
 
-import torch
+from hipool.utils import kronecker_generator
+from hipool.Graph_Models import GCN, GAT, GraphSAGE, SimpleRank, LinearFirst, DiffPool, HiPool
+
 import networkx as nx
-import torch.nn as nn
-from torch_geometric.utils import from_networkx
 import numpy as np
 import transformers
+import torch
+
+from torch import nn
+from torch_geometric.utils import from_networkx
 from torch.nn.utils.rnn import pad_sequence
-from utils import kronecker_generator
 
 
 class Bert_Classification_Model(nn.Module):

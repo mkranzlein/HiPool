@@ -1,11 +1,11 @@
+from math import ceil
 
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, GATConv, SAGEConv
 
-from math import ceil
 from torch_geometric.nn import dense_diff_pool
 from torch_geometric.nn import DenseGCNConv
+from torch_geometric.nn import GCNConv, GATConv, SAGEConv
 
 
 # https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/conv/sage_conv.html#SAGEConv
