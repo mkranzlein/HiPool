@@ -1,0 +1,15 @@
+name: hipool
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - huggingface::transformers
+  - networkx
+  - numpy
+  - pandas
+  - pip
+  - pytorch::pytorch
+  - python
+  - scikit-learn
+  - pip:
+    - torch_geometric
