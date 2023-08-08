@@ -20,6 +20,8 @@ A modified implementation of HiPool to support experiments on [CuRIAM](https://a
     ```
 3. Download datasets.
     - CuRIAM: TODO
+    - IMDB: I think this is the dataset: https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews
+        - I renamed the main csv file to `imdb_sample.csv` and removed most rows for faster debugging.
 
 ## Cite HiPool
 ```
