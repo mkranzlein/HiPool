@@ -98,7 +98,7 @@ class DatasetSplit(Dataset):
                          'product'] = 'Money transfer, virtual currency, or money service'
             train_raw = train_raw.rename(
                 columns={'consumer_complaint_narrative': 'text', 'product': 'label'})
-        elif file_location.startswith('imdb'):
+        elif "imdb" in file_location:
             df = pd.read_csv("data/imdb.csv")
             train_raw = df[df.review.notnull()]
             train_raw = train_raw[['review', 'sentiment']]
