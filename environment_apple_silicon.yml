@@ -4,6 +4,7 @@ channels:
   - pytorch
 dependencies:
   - huggingface::transformers
+  - jupyterlab
   - networkx
   - numpy
   - pandas

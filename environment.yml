@@ -3,6 +3,7 @@ channels:
   - nvidia # For pytorch's GPU dependencies
 dependencies:
   - huggingface::transformers
+  - jupyterlab
   - networkx
   - numpy
   - pandas
