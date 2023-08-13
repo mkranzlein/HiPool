@@ -110,7 +110,9 @@ class DatasetSplit(Dataset):
         train = train_raw.copy()
         if (self.max_size_dataset):
             train = train.loc[0:self.max_size_dataset, :]
-        train = train.reindex(np.random.permutation(train.index))
+        # MK: there's already shuffle functionality in the training scripts.
+        # Having this run first without a seed breaks reproducibility
+        # train = train.reindex(np.random.permutation(train.index))
         train['text'] = train.text.apply(self.clean_txt)
         'return string list in an object ndarrary, ad an int arrary for labels'
         self.num_class = len(set(train['label'].values))
