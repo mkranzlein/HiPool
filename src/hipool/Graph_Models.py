@@ -3,29 +3,11 @@ from math import ceil
 import torch
 import torch.nn.functional as F
 
-from torch_geometric.nn import dense_diff_pool
 from torch_geometric.nn import DenseGCNConv
-from torch_geometric.nn import GCNConv, GATConv, SAGEConv
+from torch_geometric.nn import GATConv
 
 
 # https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/conv/sage_conv.html#SAGEConv
-
-
-class GCN(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
-        super().__init__()
-        self.conv1 = GCNConv(input_dim, hidden_dim)
-        self.conv2 = GCNConv(hidden_dim, output_dim)
-
-    def forward(self, x, edge_index):
-
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-
-        return F.log_softmax(x, dim=1)  # shape: 2708, 7
-
 
 class GAT(torch.nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
@@ -43,159 +25,6 @@ class GAT(torch.nn.Module):
         return F.log_softmax(output, dim=1)  # shape: [num_node/x.shape[0], output_dim/num_class]
 
 
-# add classic methods
-class GraphSAGE(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
-        super().__init__()
-        self.conv1 = SAGEConv(input_dim, hidden_dim)
-        self.conv2 = SAGEConv(hidden_dim, output_dim)
-
-    def forward(self, x, edge_index):
-
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-
-        return F.log_softmax(x, dim=1)
-
-
-# add classic methods
-class LinearFirst(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
-        super().__init__()
-        self.conv1 = torch.nn.Linear(input_dim, output_dim)
-
-    def forward(self, x, edge_index):
-
-        # import pdb;pdb.set_trace()
-
-        # keep top 10%
-        topk = int(x.shape[0]*0.1)
-        output = F.relu(x[0:topk])
-        output = F.dropout(output, training=self.training)
-        output = self.conv1(output)
-
-        return F.log_softmax(output, dim=1)
-
-
-class SimpleRank(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
-        super().__init__()
-        self.conv1 = GCNConv(input_dim, hidden_dim)
-        self.conv2 = torch.nn.Linear(hidden_dim, output_dim)
-
-    def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-
-        # import pdb;
-        # pdb.set_trace()
-
-        '''keep first 10%'''
-        # topk = int(x.shape[0]*0.1)
-        # output = F.relu(x[0:topk])
-
-        '''keep random 10%'''
-        topk = int(x.shape[0] * 0.1)
-        indices = torch.randperm(x.shape[0])[:topk]
-        output = F.relu(x[indices])
-
-        '''start calculating'''
-        output = F.dropout(output, training=self.training)
-        output = self.conv2(output)
-
-        return F.log_softmax(output, dim=1)
-
-
-# following two methods are diffpool: Feb, 2022'
-# defines a convolution network, 3 layers each
-class DiffPoolGNN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels,
-                 normalize=False, lin=True):
-        super().__init__()
-
-        self.convs = torch.nn.ModuleList()
-        self.bns = torch.nn.ModuleList()
-
-        # hidden_channels = 64
-        self.convs.append(DenseGCNConv(in_channels, hidden_channels, normalize))
-        self.bns.append(torch.nn.BatchNorm1d(hidden_channels))
-
-        self.convs.append(DenseGCNConv(hidden_channels, hidden_channels, normalize))
-        self.bns.append(torch.nn.BatchNorm1d(hidden_channels))
-
-        self.convs.append(DenseGCNConv(hidden_channels, out_channels, normalize))
-        self.bns.append(torch.nn.BatchNorm1d(out_channels))
-
-    def forward(self, x, adj, mask=None):
-
-        for step in range(len(self.convs)):
-            res = F.relu(self.convs[step](x, adj, mask))  # shape: 32, 150, 64
-
-            'torch.permute is not working now'
-            # x = torch.permute(self.bns[step](torch.permute(res, (0, 2, 1))), (0, 2, 1))
-            x = self.bns[step](res.permute((0, 2, 1))).permute((0, 2, 1))
-
-        return x
-
-
-# the main class, contains two GNNs for emb and pooling
-class DiffPool(torch.nn.Module):
-    def __init__(self, device, max_nodes, input_dim, hidden_dim, output_dim):
-        super().__init__()
-
-        self.device = device
-
-        self.num_nodes1 = ceil(max_nodes*0.5)
-        self.gnn1_pool = DiffPoolGNN(input_dim, hidden_dim, self.num_nodes1)
-        self.gnn1_embed = DiffPoolGNN(input_dim, hidden_dim, hidden_dim)
-
-        self.num_nodes2 = ceil(self.num_nodes1*0.5)
-        self.gnn2_pool = DiffPoolGNN(hidden_dim, hidden_dim, self.num_nodes2)
-        self.gnn2_embed = DiffPoolGNN(hidden_dim, hidden_dim, hidden_dim, lin=False)
-
-        self.gnn3_embed = DiffPoolGNN(hidden_dim, hidden_dim, hidden_dim, lin=False)
-
-        # MLP for the final layer
-        self.lin1 = torch.nn.Linear(hidden_dim, hidden_dim)
-        self.lin2 = torch.nn.Linear(hidden_dim, output_dim)
-
-    def forward(self, x, adj, mask=None):
-        # add a batch dim (batch size is 1) for dense layer computation
-        newadj = adj[1].unsqueeze(0).float()
-        newx = x.unsqueeze(0).float()
-
-        # s = self.gnn1_pool(newx, newadj, mask)
-        x = self.gnn1_embed(newx, newadj, mask)
-
-        # Use a new method for constructing s
-        portion1 = ceil(x.shape[1]/self.num_nodes1)
-        flat_s = torch.eye(self.num_nodes1)
-        flat_s = torch.repeat_interleave(flat_s, portion1, dim=0)[:x.shape[1], ].unsqueeze(0).float().to(self.device)
-
-        # x, adj, l1, e1 = dense_diff_pool(x,newadj,s,mask) # new x shape [1, num_node, hidden];
-        # new adj shape [1,num_node, num_node]
-        x, adj, l1, e1 = dense_diff_pool(x, newadj, flat_s, mask)
-
-        # s = self.gnn2_pool(x, adj)
-        x = self.gnn2_embed(x, adj)
-
-        portion2 = ceil(x.shape[1] / self.num_nodes2)
-        flat_s = torch.eye(self.num_nodes2)
-        flat_s = torch.repeat_interleave(flat_s, portion2, dim=0)[:x.shape[1], ].unsqueeze(0).float().to(self.device)
-
-        x, adj, l2, e2 = dense_diff_pool(x, adj, flat_s)
-
-        x = self.gnn3_embed(x, adj)
-
-        x = x.mean(dim=1)
-        x = F.relu(self.lin1(x))
-        x = self.lin2(x)
-
-        return F.log_softmax(x, dim=1)
-
-
 # Following two methods are our hi-method: Feb, 2022
 class HiPool(torch.nn.Module):
     def __init__(self, device, input_dim, hidden_dim, output_dim):
@@ -203,7 +32,7 @@ class HiPool(torch.nn.Module):
 
         self.device = device
         self.num_nodes1 = 10
-        self.num_nodes2 = ceil(self.num_nodes1/2)
+        self.num_nodes2 = ceil(self.num_nodes1 / 2)
 
         self.conv1 = DenseGCNConv(input_dim, hidden_dim)
         self.conv2 = DenseGCNConv(hidden_dim, hidden_dim)
@@ -233,7 +62,7 @@ class HiPool(torch.nn.Module):
 
         # hipool: add sent-token cross-attention (cross-layer) attention: 2 layers
         portion1 = ceil(x.shape[0] / self.num_nodes1)
-        flat_s = torch.eye(self.num_nodes1) # identity matrix of num_nodes1 x num_nodes1
+        flat_s = torch.eye(self.num_nodes1)  # identity matrix of num_nodes1 x num_nodes1
         flat_s = torch.repeat_interleave(flat_s, portion1, dim=0)[:x.shape[0], ].float().to(self.device)
 
         # first layer
