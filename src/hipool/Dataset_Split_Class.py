@@ -151,8 +151,7 @@ class DatasetSplit(Dataset):
         attention_mask_list = []
         token_type_ids_list = []
         targets_list = []
-
-        previous_input_ids = data_tokenize["input_ids"].reshape(-1)
+        previous_input_ids = data_tokenize["input_ids"].squeeze()
         targets = torch.tensor(targets, dtype=torch.int)
 
         start_token = torch.tensor([101], dtype=torch.long)
