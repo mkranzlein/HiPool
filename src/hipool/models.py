@@ -19,28 +19,35 @@ from torch.nn.utils.rnn import pad_sequence
 from typeguard import typechecked
 
 
-class Hi_Bert_Classification_Model_GCN(nn.Module):
-    """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
+class ChunkModel(nn.Module):
+    """A chunk-based sequence classification model using HiPool.
 
-    def __init__(self, args, num_class, device, adj_method, pooling_method='mean'):
+    Pooled BERT embeddings (one pooled embedding per chunk) are passed into a
+    linear layer and then through HiPool, which uses a graph convolutional
+    network and an attention mechanism to capture the relations among the
+    chunks.
+
+    The output of the model is a binary prediction about the sequence, such as
+    whether the movie review is positive or negative.
+
+    """
+
+    def __init__(self, args, num_class, device, pooling_method='mean'):
         super().__init__()
         self.args = args
-        self.bert_path = 'bert-base-uncased'
-        self.bert = transformers.BertModel.from_pretrained(self.bert_path)
+        self.bert = transformers.BertModel.from_pretrained("bert-base-uncased")
 
-        self.lstm_layer_number = 2
         self.lstm_hidden_size = 128
         self.hidden_dim = 32
 
         self.device = device
         self.pooling_method = pooling_method
 
-        self.linear = nn.Linear(768, self.lstm_hidden_size).to(device)
+        self.linear = nn.Linear(768, 128).to(device)
 
         self.gcn = HiPool(self.device, input_dim=self.lstm_hidden_size,
                           hidden_dim=32, output_dim=num_class).to(device)
 
-        self.adj_method = adj_method
 
     @jaxtyped
     @typechecked
@@ -89,8 +96,8 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
         return gcn_output_batch
 
 
-class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
-    """ A Model for bert fine tuning, put an lstm on top of BERT encoding """
+class TokenLevelModel(nn.Module):
+    """A token-based sequence classification model using HiPool."""
 
     def __init__(self, num_class, device, adj_method, pooling_method='mean'):
         super().__init__()
