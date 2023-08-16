@@ -33,7 +33,7 @@ class CuriamDataset(Dataset):
         _ = self.read_json(json_file)
         self.documents = _["documents"]
         self.labels = _["labels"]
-        self.num_classes = 9
+        self.num_class = 9
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.chunk_len = chunk_len
@@ -98,14 +98,14 @@ class CuriamDataset(Dataset):
 
         total_token = len(previous_input_ids) - 2  # Exclude head 101, tail 102
         stride = self.overlap_len - 2
-        number_chunks = math.floor(total_token/stride)
+        number_chunks = math.floor(total_token / stride)
 
         mask_list = torch.ones(self.chunk_len, dtype=torch.long)
         type_list = torch.zeros(self.chunk_len, dtype=torch.long)
-        zeroed_labels = torch.zeros(self.num_classes)
-        for current in range(number_chunks-1):
-            input_ids = previous_input_ids[current*stride:current*stride+self.chunk_len-2]
-            chunk_targets = targets[current*stride:current*stride+self.chunk_len-2,:]
+        zeroed_labels = torch.zeros(self.num_class)
+        for current in range(number_chunks - 1):
+            input_ids = previous_input_ids[current * stride:current * stride + self.chunk_len - 2]
+            chunk_targets = targets[current * stride:current * stride + self.chunk_len - 2, :]
             input_ids = torch.cat((start_token, input_ids, end_token))
             # MK: in eval, make sure to only eval each token once and don't include start and end toks
             chunk_targets = torch.cat((zeroed_labels.unsqueeze(dim=0), chunk_targets, zeroed_labels.unsqueeze(dim=0)))
