@@ -159,12 +159,12 @@ class DatasetSplit(Dataset):
 
         total_token = len(previous_input_ids) - 2  # remove head 101, tail 102
         stride = self.overlap_len - 2
-        number_chunks = math.floor(total_token/stride)
+        number_chunks = math.floor(total_token / stride)
 
         mask_list = torch.ones(self.chunk_len, dtype=torch.long)
         type_list = torch.zeros(self.chunk_len, dtype=torch.long)
-        for current in range(number_chunks-1):
-            input_ids = previous_input_ids[current*stride:current*stride+self.chunk_len-2]
+        for current in range(number_chunks - 1):
+            input_ids = previous_input_ids[current * stride:current * stride + self.chunk_len - 2]
             input_ids = torch.cat((start_token, input_ids, end_token))
             input_ids_list.append(input_ids)
 
@@ -173,7 +173,7 @@ class DatasetSplit(Dataset):
             targets_list.append(targets)
 
         if len(input_ids_list) == 0:
-            input_ids = torch.ones(self.chunk_len-2, dtype=torch.long)
+            input_ids = torch.ones(self.chunk_len - 2, dtype=torch.long)
             input_ids = torch.cat((start_token, input_ids, end_token))
             input_ids_list.append(input_ids)
 
