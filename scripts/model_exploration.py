@@ -2,9 +2,9 @@
 
 import time
 
-from hipool.Bert_Classification_minimal import Hi_Bert_Classification_Model_GCN_tokenlevel
-from hipool.Bert_Classification_minimal import Hi_Bert_Classification_Model_GCN
+from hipool.models import ChunkModel, TokenLevelModel
 from hipool.curiam_reader import CuriamDataset
+from hipool.imdb_reader import IMDBDataset
 from hipool.Dataset_Split_Class import DatasetSplit
 from hipool.utils import collate
 from hipool.utils import train_loop_fun1, eval_loop_fun1, evaluate
@@ -23,18 +23,17 @@ is_curiam = False
 
 if is_curiam:
     dataset = CuriamDataset(
-        json_file="data/curiam_sample.json",
+        json_file_path="data/curiam_sample.json",
         tokenizer=bert_tokenizer,
         max_len=1024,
         chunk_len=20,
         overlap_len=10)
 else:
-    dataset = DatasetSplit(
+    dataset = IMDBDataset(file_path="data/imdb_sample.csv",
         tokenizer=bert_tokenizer,
         max_len=1024,
         chunk_len=20,
-        overlap_len=10,
-        file_location="data/imdb.json")
+        overlap_len=10)
 
 asdf = dataset[0]
 print()
@@ -75,12 +74,12 @@ print('Using device:', device)
 
 num_training_steps = int(len(dataset) / TRAIN_BATCH_SIZE * EPOCH)
 
-# if is_curiam:
-model = Hi_Bert_Classification_Model_GCN_tokenlevel(num_class=dataset.num_class, device=device,
-                                                        adj_method="path_graph").to(device)
-# else:
-#     model = Hi_Bert_Classification_Model_GCN(args="", num_class=dataset.num_class, device=device,
-#                                              adj_method="path_graph").to(device)
+
+chunk_model = True
+if chunk_model:
+    model = ChunkModel(args="", num_class=dataset.num_class, device=device).to(device)
+else:
+    model = TokenLevelModel(num_class=dataset.num_class, device=device).to(device)
 
 
 lr = 2e-5  # 1e-3
