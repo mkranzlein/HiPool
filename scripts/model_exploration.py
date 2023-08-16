@@ -75,12 +75,12 @@ print('Using device:', device)
 
 num_training_steps = int(len(dataset) / TRAIN_BATCH_SIZE * EPOCH)
 
-if is_curiam:
-    model = Hi_Bert_Classification_Model_GCN_tokenlevel(num_class=dataset.num_class, device=device,
+# if is_curiam:
+model = Hi_Bert_Classification_Model_GCN_tokenlevel(num_class=dataset.num_class, device=device,
                                                         adj_method="path_graph").to(device)
-else:
-    model = Hi_Bert_Classification_Model_GCN(args="", num_class=dataset.num_class, device=device,
-                                             adj_method="path_graph").to(device)
+# else:
+#     model = Hi_Bert_Classification_Model_GCN(args="", num_class=dataset.num_class, device=device,
+#                                              adj_method="path_graph").to(device)
 
 
 lr = 2e-5  # 1e-3
