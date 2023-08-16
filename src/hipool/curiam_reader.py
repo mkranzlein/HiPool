@@ -29,18 +29,18 @@ class CuriamDataset(Dataset):
     https://github.com/mkranzlein/curiam/blob/main/corpus/corpus.json
     """
 
-    def __init__(self, json_file, tokenizer, max_len, chunk_len, overlap_len):
-        _ = self.read_json(json_file)
-        self.documents = _["documents"]
-        self.labels = _["labels"]
+    def __init__(self, json_file_path, tokenizer, max_len, chunk_len, overlap_len):
+        processed_json = self.read_json(json_file_path)
+        self.documents = processed_json["documents"]
+        self.labels = processed_json["labels"]
         self.num_class = 9
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.chunk_len = chunk_len
         self.overlap_len = overlap_len
 
-    def read_json(self, json_file: str) -> dict:
-        with open(json_file, "r", encoding="utf-8") as f:
+    def read_json(self, json_file_path: str) -> dict:
+        with open(json_file_path, "r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
         documents = []

@@ -98,7 +98,7 @@ class DatasetSplit(Dataset):
             train_raw = train_raw.rename(
                 columns={'consumer_complaint_narrative': 'text', 'product': 'label'})
         elif "imdb" in file_location:
-            df = pd.read_csv("data/imdb.csv")
+            df = pd.read_csv("data/imdb_sample.csv")
             train_raw = df[df.review.notnull()]
             train_raw = train_raw[['review', 'sentiment']]
             train_raw.reset_index(inplace=True, drop=True)
