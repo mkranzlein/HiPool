@@ -7,7 +7,8 @@
 ##############################################################
 
 from hipool.utils import kronecker_generator
-from hipool.Graph_Models import GCN, GAT, GraphSAGE, SimpleRank, LinearFirst, DiffPool, HiPool
+# from hipool.Graph_Models import GCN, GAT, GraphSAGE, SimpleRank, LinearFirst, DiffPool, HiPool
+from hipool.Graph_Models import GAT, HiPool
 
 import networkx as nx
 import numpy as np
@@ -61,8 +62,10 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
 
         self.lstm_layer_number = 2
         'default 128 and 32'
-        self.lstm_hidden_size = args.lstm_dim
-        self.hidden_dim = args.hid_dim
+        # self.lstm_hidden_size = args.lstm_dim
+        # self.hidden_dim = args.hid_dim
+        self.lstm_hidden_size = 128
+        self.hidden_dim = 32
 
         # self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
         self.device = device
@@ -70,23 +73,23 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
 
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
 
-        # Start GCN
-        if self.args.graph_type == 'gcn':
-            self.gcn = GCN(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
-        elif self.args.graph_type == 'gat':
-            self.gcn = GAT(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
-        elif self.args.graph_type == 'graphsage':
-            self.gcn = GraphSAGE(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
-        elif self.args.graph_type == 'linear':
-            self.gcn = LinearFirst(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
-        elif self.args.graph_type == 'rank':
-            self.gcn = SimpleRank(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
-        elif self.args.graph_type == 'diffpool':
-            self.gcn = DiffPool(self.device, max_nodes=10, input_dim=self.lstm_hidden_size,
-                                hidden_dim=32, output_dim=num_class).to(device)
-        elif self.args.graph_type == 'hipool':
-            self.gcn = HiPool(self.device, input_dim=self.lstm_hidden_size,
-                              hidden_dim=32, output_dim=num_class).to(device)
+        # # Start GCN
+        # if self.args.graph_type == 'gcn':
+        #     self.gcn = GCN(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+        # elif self.args.graph_type == 'gat':
+        #     self.gcn = GAT(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+        # elif self.args.graph_type == 'graphsage':
+        #     self.gcn = GraphSAGE(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+        # elif self.args.graph_type == 'linear':
+        #     self.gcn = LinearFirst(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+        # elif self.args.graph_type == 'rank':
+        #     self.gcn = SimpleRank(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
+        # elif self.args.graph_type == 'diffpool':
+        #     self.gcn = DiffPool(self.device, max_nodes=10, input_dim=self.lstm_hidden_size,
+        #                         hidden_dim=32, output_dim=num_class).to(device)
+        # elif self.args.graph_type == 'hipool':
+        self.gcn = HiPool(self.device, input_dim=self.lstm_hidden_size,
+                          hidden_dim=32, output_dim=num_class).to(device)
 
         self.adj_method = adj_method
 
@@ -118,13 +121,13 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
         elif self.adj_method == 'kk':
             generated_adj = kronecker_generator(node_number)
         elif self.adj_method == 'watts':
-            if node_number-1 > 0:
-                generated_adj = nx.watts_strogatz_graph(node_number, k=node_number-1, p=0.5)
+            if node_number - 1 > 0:
+                generated_adj = nx.watts_strogatz_graph(node_number, k=node_number - 1, p=0.5)
             else:
                 generated_adj = nx.watts_strogatz_graph(node_number, k=node_number, p=0.5)
         elif self.adj_method == 'ba':
             if node_number - 1 > 0:
-                generated_adj = nx.barabasi_albert_graph(node_number, m=node_number-1)
+                generated_adj = nx.barabasi_albert_graph(node_number, m=node_number - 1)
             else:
                 generated_adj = nx.barabasi_albert_graph(node_number, m=node_number)
         elif self.adj_method == 'bigbird':
@@ -148,11 +151,11 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
         if self.adj_method == 'complete':
             adj = torch.ones((node_number, node_number)).to_sparse().indices().to(self.device)
 
-        if self.args.graph_type.endswith('pool'):
+        # if self.args.graph_type.endswith('pool'):
             # diffpool only accepts dense adj
-            adj_matrix = nx.adjacency_matrix(generated_adj).todense()
-            adj_matrix = torch.from_numpy(np.asarray(adj_matrix)).to(self.device)
-            adj = (adj, adj_matrix)
+        adj_matrix = nx.adjacency_matrix(generated_adj).todense()
+        adj_matrix = torch.from_numpy(np.asarray(adj_matrix)).to(self.device)
+        adj = (adj, adj_matrix)
 
         # sent_bert shape torch.Size([batch_size, 3, 768])
         gcn_output_batch = []
@@ -183,15 +186,14 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
         self.lstm_hidden_size = 128
         self.max_len = 1024
 
-        # self.bert_lstm = nn.Linear(768, self.lstm_hidden_size)
         self.device = device
         self.pooling_method = pooling_method
 
         self.mapping = nn.Linear(768, self.lstm_hidden_size).to(device)
 
-        # start GCN
-        # MK: use highpool here, like in the non token level version of this class
-        # self.gcn = GCN(input_dim=self.lstm_hidden_size,hidden_dim=32,output_dim=num_class).to(device)
+        # self.gcn = HiPool(self.device, input_dim=self.lstm_hidden_size,
+        #                   hidden_dim=32, output_dim=num_class).to(device)
+
         self.gcn = GAT(input_dim=self.lstm_hidden_size, hidden_dim=32, output_dim=num_class).to(device)
         self.adj_method = adj_method
 
@@ -227,13 +229,13 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
         elif self.adj_method == 'kk':
             generated_adj = kronecker_generator(node_number)
         elif self.adj_method == 'watts':
-            if node_number-1 > 0:
-                generated_adj = nx.watts_strogatz_graph(node_number, k=node_number-1, p=0.5)
+            if node_number - 1 > 0:
+                generated_adj = nx.watts_strogatz_graph(node_number, k=node_number - 1, p=0.5)
             else:
                 generated_adj = nx.watts_strogatz_graph(node_number, k=node_number, p=0.5)
         elif self.adj_method == 'ba':
             if node_number - 1 > 0:
-                generated_adj = nx.barabasi_albert_graph(node_number, m=node_number-1)
+                generated_adj = nx.barabasi_albert_graph(node_number, m=node_number - 1)
             else:
                 generated_adj = nx.barabasi_albert_graph(node_number, m=node_number)
         else:
