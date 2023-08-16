@@ -2,6 +2,8 @@
 
 A work-in-progress modified implementation of HiPool to support experiments on [CuRIAM](https://arxiv.org/abs/2305.14719).
 
+This is **not the original repo for HiPool** and I am not an author on the HiPool paper. Please see that repo [here](https://github.com/irenezihuili/hipool).
+
 ## Links
 - HiPool paper: https://aclanthology.org/2023.acl-short.16/
 - Original HiPool repo: https://github.com/irenezihuili/hipool
@@ -19,9 +21,9 @@ A work-in-progress modified implementation of HiPool to support experiments on [
     pip install -e .
     ```
 3. Download datasets.
-    - [CuRIAM](data/curiam.json): Included with repo
-    - IMDB: I think this is the dataset: https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews
-        - I renamed the main csv file to `imdb_sample.csv` and removed most rows for faster debugging.
+    - CuRIAM: [Included]((data/curiam.json)) with repo.
+    - IMDB: I think [this](https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews) is the dataset. 
+        - I renamed the main csv file to `imdb_sample.csv` and removed most rows for faster debugging, since this dataset is not important for what I'm experimenting with.
 
 ## Misc
 
