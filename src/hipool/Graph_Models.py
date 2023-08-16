@@ -228,18 +228,17 @@ class HiPool(torch.nn.Module):
         # add self-attention for l1
         self.multihead_attn_l1 = torch.nn.MultiheadAttention(embed_dim=32, num_heads=2)
 
-    def forward(self, x, edge_index):
+    def forward(self, x, adjacency_matrix):
         # forward_cross_best
 
         # hipool: add sent-token cross-attention (cross-layer) attention: 2 layers
-        newadj = edge_index[1].float()
         portion1 = ceil(x.shape[0] / self.num_nodes1)
-        flat_s = torch.eye(self.num_nodes1)
+        flat_s = torch.eye(self.num_nodes1) # identity matrix of num_nodes1 x num_nodes1
         flat_s = torch.repeat_interleave(flat_s, portion1, dim=0)[:x.shape[0], ].float().to(self.device)
 
         # first layer
         x1 = torch.matmul(flat_s.t(), x)  # (5,128)
-        self.adj1 = torch.matmul(torch.matmul(flat_s.t(), newadj), flat_s)
+        self.adj1 = torch.matmul(torch.matmul(flat_s.t(), adjacency_matrix), flat_s)
 
         # Testing cross-layer attention'
         # generate inverse adj for cross-layer attention
