@@ -4,6 +4,7 @@ channels:
   - pytorch
 dependencies:
   - huggingface::transformers
+  - jaxtyping
   - jupyterlab
   - networkx
   - numpy
@@ -14,3 +15,4 @@ dependencies:
   - scikit-learn
   - pip:
     - torch_geometric
+    - typeguard
