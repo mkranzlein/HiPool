@@ -26,67 +26,18 @@ def loss_fun(outputs, targets):
 
 
 def evaluate(target, predicted):
-    true_label_mask = [1 if (np.argmax(x)-target[i]) ==
-                       0 else 0 for i, x in enumerate(predicted)]
+    true_label_mask = [1 if (np.argmax(x) - target[i]) == 0
+                       else 0 for i, x in enumerate(predicted)]
     nb_prediction = len(true_label_mask)
     true_prediction = sum(true_label_mask)
-    false_prediction = nb_prediction-true_prediction
-    accuracy = true_prediction/nb_prediction
+    false_prediction = nb_prediction - true_prediction
+    accuracy = true_prediction / nb_prediction
     return {
         "accuracy": accuracy,
         "nb exemple": len(target),
         "true_prediction": true_prediction,
         "false_prediction": false_prediction,
     }
-
-
-def get_graph_features(graph):
-    'more https://networkx.org/documentation/stable/reference/algorithms/approximation.html'
-
-    try:
-        # import pdb;pdb.set_trace()
-        node_number = nx.number_of_nodes(graph)  # int
-        centrality = nx.degree_centrality(graph)  # a dictionary
-        centrality = sum(centrality.values())/node_number
-        edge_number = nx.number_of_edges(graph)  # int
-        degrees = dict(graph.degree)  # a dictionary
-        degrees = sum(degrees.values()) / edge_number
-        density = nx.density(graph)  # a float
-        clustring_coef = nx.average_clustering(graph)  # a float Compute the average clustering coefficient for the graph G. # noqa E501
-        closeness_centrality = nx.closeness_centrality(graph)  # dict
-        closeness_centrality = sum(closeness_centrality.values())/len(closeness_centrality)
-        number_triangles = nx.triangles(graph)  # dict
-        number_triangles = sum(number_triangles.values())/len(number_triangles)
-        number_clique = nx.graph_clique_number(graph)  # a float Returns the number of maximal cliques in the graph.
-        number_connected_components = nx.number_connected_components(graph)  # int Returns the number of connected components. # noqa E501
-        # avg_shortest_path_len = nx.average_shortest_path_length(graph) # float Return the average shortest path length;  # noqa E501
-        """
-        The average shortest path length is the sum of path lengths d(u,v) between all pairs of nodes
-        (assuming the length is zero if v is not reachable from v) normalized by n*(n-1)
-        where n is the number of nodes in G.
-        """
-        # diameter = nx.distance_measures.diameter(graph) # int The diameter is the maximum eccentricity.
-        return {'node_number': node_number, 'edge_number': edge_number, 'centrality': centrality, 'degrees': degrees,
-                'density': density, 'clustring_coef': clustring_coef, 'closeness_centrality': closeness_centrality,
-                'number_triangles': number_triangles, 'number_clique': number_clique,
-                'number_connected_components': number_connected_components,
-                'avg_shortest_path_len': 0, 'diameter': 0}
-    except:
-        return {'node_number': 1, 'edge_number': 1, 'centrality': 0, 'degrees': 0,
-                'density': 0, 'clustring_coef': 0, 'closeness_centrality': 0,
-                'number_triangles': 0, 'number_clique': 0,
-                'number_connected_components': 0,
-                'avg_shortest_path_len': 0, 'diameter': 0}
-
-
-def graph_feature_stats(graph_feature_list):
-    stats = {k: [] for k in graph_feature_list[0].keys()}
-    for feature_dict in graph_feature_list:
-        for key in stats.keys():
-            stats[key].append(feature_dict[key])
-    # Get mean
-    stats_mean = {k: sum(v)/len(v) for (k, v) in stats.items()}
-    return stats_mean
 
 
 def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
@@ -96,7 +47,6 @@ def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
     t0 = time.time()
     losses = []
 
-    graph_features = []
     for batch_idx, batch in enumerate(data_loader):
 
         ids = [data["ids"] for data in batch]  # size of 8
@@ -110,7 +60,7 @@ def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
 
         optimizer.zero_grad()
 
-        outputs, adj_graph = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
+        outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
 
         loss = loss_fun(outputs, target_labels)
         loss.backward()
@@ -124,11 +74,6 @@ def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
                 f"___ batch index = {batch_idx} / {len(data_loader)} ({100*batch_idx / len(data_loader):.2f}%), loss = {np.mean(losses[-10:]):.4f}, time = {time.time()-t0:.2f} secondes ___")  # noqa E501
             t0 = time.time()
 
-        graph_features.append(get_graph_features(adj_graph))
-
-    stats_mean = graph_feature_stats(graph_features)
-    import pprint
-    pprint.pprint(stats_mean)
     return losses
 
 
@@ -236,8 +181,8 @@ def kronecker_generator(node_number):
     n = math.ceil(math.sqrt(node_number))
     # binomial edge
     nb, pb = 10, .5
-    A = np.random.binomial(nb, pb, n*n).reshape(n, n) / 10
-    B = np.random.binomial(nb, pb, n*n).reshape(n, n) / 10
+    A = np.random.binomial(nb, pb, n * n).reshape(n, n) / 10
+    B = np.random.binomial(nb, pb, n * n).reshape(n, n) / 10
     A[A < 0.5] = 0
     B[B < 0.5] = 0
     prod = np.kron(A, B)
