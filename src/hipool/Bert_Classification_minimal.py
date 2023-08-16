@@ -6,11 +6,9 @@
 #
 ##############################################################
 
-from hipool.utils import kronecker_generator
 from hipool.hipool import HiPool
 
 import networkx as nx
-import numpy as np
 import transformers
 import torch
 import torch_geometric
@@ -88,7 +86,7 @@ class Hi_Bert_Classification_Model_GCN(nn.Module):
             gcn_output_batch.append(gcn_output)
         gcn_output_batch = torch.stack(gcn_output_batch)
 
-        return gcn_output_batch, graph  # (batch_size, class_number)
+        return gcn_output_batch
 
 
 class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
@@ -135,7 +133,6 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
         # random, using networkx
 
         generated_adj = nx.path_graph(node_number)
-       
 
         nx_adj = torch_geometric.utils.from_networkx(generated_adj)
         adj = nx_adj['edge_index'].to(self.device)
@@ -157,4 +154,4 @@ class Hi_Bert_Classification_Model_GCN_tokenlevel(nn.Module):
 
         # GCN ends
 
-        return gcn_output_batch, generated_adj  # (batch_size, class_number)
+        return gcn_output_batch
