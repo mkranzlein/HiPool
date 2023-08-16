@@ -32,11 +32,11 @@ This repo uses [jaxtyping](https://github.com/google/jaxtyping) and [typeguard](
 ```
 @jaxtyped
 @typechecked
-def some_function():
+def some_function(x: Float[torch.Tensor, "10, 768"]):
     pass
 ```
 
-I recommend taking a look at the [docs](https://docs.kidger.site/jaxtyping/).
+I recommend taking a look at the [jaxtyping docs](https://docs.kidger.site/jaxtyping/).
 
 ## Cite HiPool
 ```
