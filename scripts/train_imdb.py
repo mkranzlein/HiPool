@@ -48,8 +48,8 @@ parser.add_argument('--level', type=str, default='sent', help='level: sent or to
 args = parser.parse_args()
 
 model_dir = args.dataset
-if not os.path.exists("models/"+model_dir):
-    os.mkdir("models/"+model_dir)
+if not os.path.exists("models/" + model_dir):
+    os.mkdir("models/" + model_dir)
     print('Making model dir...')
 
 TRAIN_BATCH_SIZE = args.batch_size
@@ -63,7 +63,7 @@ GROUP_NUM = 10
 
 # CHUNK_LEN=200
 CHUNK_LEN = args.sentlen  # sentence-level
-OVERLAP_LEN = int(args.sentlen/2)
+OVERLAP_LEN = int(args.sentlen / 2)
 
 lr = 2e-5  # 1e-3
 
@@ -131,8 +131,8 @@ for epoch in range(EPOCH):
     print(f"\n=============== EPOCH {epoch+1} / {EPOCH} ===============\n")
     batches_losses_tmp = train_loop_fun1(train_data_loader, model, optimizer, device)
     epoch_loss = np.mean(batches_losses_tmp)
-    print("\n ******** Running time this step..", time.time()-t0)
-    avg_running_time.append(time.time()-t0)
+    print("\n ******** Running time this step..", time.time() - t0)
+    avg_running_time.append(time.time() - t0)
     print(f"\n*** avg_loss : {epoch_loss:.2f}, time : ~{(time.time()-t0)//60} min ({time.time()-t0:.2f} sec) ***\n")
     t1 = time.time()
     output, target, val_losses_tmp = eval_loop_fun1(valid_data_loader, model, device)
@@ -144,5 +144,5 @@ for epoch in range(EPOCH):
     batches_losses.append(batches_losses_tmp)
     print("\t§§ model has been saved §§")
 
-print("\n\n$$$$ average running time per epoch (sec)..", sum(avg_running_time)/len(avg_running_time))
+print("\n\n$$$$ average running time per epoch (sec)..", sum(avg_running_time) / len(avg_running_time))
 # torch.save(model, "models/"+model_dir+"/model_epoch{epoch+1}.pt")
