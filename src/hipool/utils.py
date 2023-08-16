@@ -104,6 +104,8 @@ def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
         token_type_ids = [data["token_type_ids"] for data in batch]
         targets = [data["targets"] for data in batch]  # length: 8
 
+        # Here x[0] is used because the label is sequence-level, which
+        # makes the label the same for all chunks from a sequence
         target_labels = torch.stack([x[0] for x in targets]).long().to(device)
 
         optimizer.zero_grad()
@@ -117,7 +119,7 @@ def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
         if scheduler:
             scheduler.step()
         losses.append(loss.item())
-        if batch_idx % 500 == 0:
+        if batch_idx % 10 == 0:
             print(
                 f"___ batch index = {batch_idx} / {len(data_loader)} ({100*batch_idx / len(data_loader):.2f}%), loss = {np.mean(losses[-10:]):.4f}, time = {time.time()-t0:.2f} secondes ___")  # noqa E501
             t0 = time.time()
