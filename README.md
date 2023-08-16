@@ -1,6 +1,6 @@
 # HiPool
 
-A modified implementation of HiPool to support experiments on [CuRIAM](https://arxiv.org/abs/2305.14719).
+A work-in-progress modified implementation of HiPool to support experiments on [CuRIAM](https://arxiv.org/abs/2305.14719).
 
 ## Links
 - HiPool paper: https://aclanthology.org/2023.acl-short.16/
@@ -19,9 +19,24 @@ A modified implementation of HiPool to support experiments on [CuRIAM](https://a
     pip install -e .
     ```
 3. Download datasets.
-    - CuRIAM: TODO
+    - [CuRIAM](data/curiam.json): Included with repo
     - IMDB: I think this is the dataset: https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews
         - I renamed the main csv file to `imdb_sample.csv` and removed most rows for faster debugging.
+
+## Misc
+
+[work-in-progress]
+
+This repo uses [jaxtyping](https://github.com/google/jaxtyping) and [typeguard](https://typeguard.readthedocs.io/) to enforce correct tensor dimensions at runtime. If you see an unfamiliar type annotation or decorators like in the example the below, it's for type checking.
+
+```
+@jaxtyped
+@typechecked
+def some_function():
+    pass
+```
+
+I recommend taking a look at the [docs](https://docs.kidger.site/jaxtyping/).
 
 ## Cite HiPool
 ```
