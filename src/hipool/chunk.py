@@ -49,6 +49,7 @@ def chunk_document(document: str, labels: torch.Tensor, num_labels: int,
 
     mask_list = torch.ones(chunk_len, dtype=torch.long)
     type_list = torch.zeros(chunk_len, dtype=torch.long)
+    # TODO: Last chunk dimensions can throw off collation function
     for chunk_id in range(num_chunks - 1):
         chunk_input_ids = doc_input_ids[0:18]
         chunk_input_ids = doc_input_ids[chunk_id * stride:chunk_id * stride + chunk_len - 2]
