@@ -91,4 +91,6 @@ class HiPool(torch.nn.Module):
         'return mean'
         x = x.mean(dim=0)
         x = F.relu(self.linear1(x))
-        return F.log_softmax(x, dim=0)
+        # Normalize output and take log for numerical stability
+        output = F.log_softmax(x, dim=0)
+        return output
