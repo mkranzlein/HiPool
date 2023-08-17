@@ -14,6 +14,8 @@ import networkx as nx
 import numpy as np
 import torch
 
+from torch.nn.utils.rnn import pad_sequence
+
 
 def collate(batches):
     # Return batches
@@ -56,13 +58,19 @@ def train_loop_fun1(data_loader, model, optimizer, device, scheduler=None):
 
         # Here x[0] is used because the label is sequence-level, which
         # makes the label the same for all chunks from a sequence
-        target_labels = torch.stack([x[0] for x in targets]).long().to(device)
 
+        # Chunk
+        # target_labels = torch.stack([x.squeeze()[0] for x in targets]).float().to(device)
+
+        # Token-level
+
+        padded_labels = pad_sequence(targets).float().to(device)
+        padded_labels = padded_labels.permute(1, 0, 2, 3)
         optimizer.zero_grad()
 
         outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
 
-        loss = loss_fun(outputs, target_labels)
+        loss = loss_fun(outputs, padded_labels)
         loss.backward()
         model.float()
         optimizer.step()
