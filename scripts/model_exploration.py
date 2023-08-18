@@ -2,22 +2,18 @@
 
 import time
 
-from hipool.models import SequenceClassificationModel, TokenClassificationModel
-from hipool.curiam_reader import CuriamDataset
-from hipool.imdb_reader import IMDBDataset
-from hipool.utils import collate
-from hipool.utils import train_loop  # eval_loop_fun1, evaluate
-
 import numpy as np
 import torch
-
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import AdamW, BertTokenizer
-from transformers import get_linear_schedule_with_warmup
+from transformers import AdamW, BertTokenizer, get_linear_schedule_with_warmup
+
+from hipool.curiam_reader import CuriamDataset
+from hipool.imdb_reader import IMDBDataset
+from hipool.models import SequenceClassificationModel, TokenClassificationModel
+from hipool.utils import collate, train_loop
 
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-
 is_curiam = True
 
 if is_curiam:

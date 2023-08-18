@@ -10,11 +10,11 @@ where t is the number of tokens in the document.
 
 import json
 
-from hipool.curiam_categories import ORDERED_CATEGORIES
-from hipool.chunk import chunk_document
 import torch
-
 from torch.utils.data import Dataset
+
+from hipool.chunk import chunk_document
+from hipool.curiam_categories import ORDERED_CATEGORIES
 
 categories_to_ids = {}
 for i, category in enumerate(ORDERED_CATEGORIES):
