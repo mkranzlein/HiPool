@@ -6,7 +6,7 @@ import warnings
 from hipool.Bert_Classification import Hi_Bert_Classification_Model_GCN, Hi_Bert_Classification_Model_GCN_tokenlevel
 from hipool.Dataset_Split_Class import DatasetSplit
 from hipool.utils import collate
-from hipool.utils import train_loop_fun1, evaluate, eval_loop_fun1
+from hipool.utils import train_loop, evaluate, eval_loop
 
 import torch
 import numpy as np
@@ -129,13 +129,13 @@ for epoch in range(EPOCH):
 
     t0 = time.time()
     print(f"\n=============== EPOCH {epoch+1} / {EPOCH} ===============\n")
-    batches_losses_tmp = train_loop_fun1(train_data_loader, model, optimizer, device)
+    batches_losses_tmp = train_loop(train_data_loader, model, optimizer, device)
     epoch_loss = np.mean(batches_losses_tmp)
     print("\n ******** Running time this step..", time.time() - t0)
     avg_running_time.append(time.time() - t0)
     print(f"\n*** avg_loss : {epoch_loss:.2f}, time : ~{(time.time()-t0)//60} min ({time.time()-t0:.2f} sec) ***\n")
     t1 = time.time()
-    output, target, val_losses_tmp = eval_loop_fun1(valid_data_loader, model, device)
+    output, target, val_losses_tmp = eval_loop(valid_data_loader, model, device)
     print(f"==> evaluation : avg_loss = {np.mean(val_losses_tmp):.2f}, time : {time.time()-t1:.2f} sec\n")
     tmp_evaluate = evaluate(target.reshape(-1), output)
     print(f"=====>\t{tmp_evaluate}")

@@ -6,7 +6,7 @@ from hipool.models import SequenceClassificationModel, TokenClassificationModel
 from hipool.curiam_reader import CuriamDataset
 from hipool.imdb_reader import IMDBDataset
 from hipool.utils import collate
-from hipool.utils import train_loop_fun1  # eval_loop_fun1, evaluate
+from hipool.utils import train_loop  # eval_loop_fun1, evaluate
 
 import numpy as np
 import torch
@@ -96,7 +96,7 @@ for epoch in range(EPOCH):
 
     t0 = time.time()
     print(f"\n=============== EPOCH {epoch+1} / {EPOCH} ===============\n")
-    batches_losses_tmp = train_loop_fun1(train_data_loader, model, optimizer, device)
+    batches_losses_tmp = train_loop(train_data_loader, model, optimizer, device)
     epoch_loss = np.mean(batches_losses_tmp)
     print("\n ******** Running time this step..", time.time() - t0)
     avg_running_time.append(time.time() - t0)
