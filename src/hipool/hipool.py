@@ -7,7 +7,6 @@ import math
 
 import torch
 import torch.nn.functional as F
-
 from jaxtyping import Float, jaxtyped
 from torch import Tensor
 from torch_geometric.nn import DenseGCNConv
@@ -98,6 +97,9 @@ class HiPool(torch.nn.Module):
         each other based on how the low-level nodes were related to each other
         (following eq. 2 from the paper). With a path graph, each mid-level node
         ends up with high weight given to itself and its neighbors.
+
+        Finally, a graph convolution operation is performed using the mid-level
+        node representations and the weighted adjacency matrix.
         """
 
         # ---------------------------- First Layer --------------------------- #
@@ -112,9 +114,9 @@ class HiPool(torch.nn.Module):
         x_mid: Float[Tensor, "mid hidden_dim"] = F.dropout(x_mid, training=self.training)[0]
 
         # --------------------------- Second Layer --------------------------- #
-        mid_high_map = self.map_low_to_high(self.num_mid_nodes, self.num_high_level_nodes)
-
+        mid_high_map: Float[Tensor, "mid high"] = self.map_low_to_high(self.num_mid_nodes, self.num_high_level_nodes)
         high_adj_matrix = torch.matmul(torch.matmul(mid_high_map.t(), mid_adj_matrix), mid_high_map)
+
         # Intermediate representation of the high-level nodes before GCN
         high_rep: Float[Tensor, "high hidden_dim"] = self.cluster_attention(x_mid, mid_high_map,
                                                                             self.attention_mid_high)
