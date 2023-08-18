@@ -1,3 +1,8 @@
+"""Implementation of Hierarchical Pooling (HiPool) for long documents.
+
+Paper: https://aclanthology.org/2023.acl-short.16.pdf
+"""
+
 import math
 
 import torch
@@ -14,20 +19,49 @@ class HiPool(torch.nn.Module):
         super().__init__()
 
         self.device = device
-        self.num_mid_level_nodes = 10
-        self.num_high_level_nodes = math.ceil(self.num_mid_level_nodes / 2)
 
-        self.conv1 = DenseGCNConv(input_dim, hidden_dim)
-        self.conv2 = DenseGCNConv(hidden_dim, hidden_dim)
-
-        # output layer
-        self.linear1 = torch.nn.Linear(hidden_dim, output_dim)
-
+        self.num_mid_nodes = 10
         self.attention_low_mid = torch.nn.Parameter(torch.zeros(size=(input_dim, input_dim))).to(self.device)
         torch.nn.init.xavier_normal_(self.attention_low_mid.data, gain=1.414)
+        self.conv1 = DenseGCNConv(input_dim, hidden_dim)
 
+        self.num_high_level_nodes = math.ceil(self.num_mid_nodes / 2)
         self.attention_mid_high = torch.nn.Parameter(torch.zeros(size=(hidden_dim, hidden_dim))).to(self.device)
         torch.nn.init.xavier_normal_(self.attention_mid_high.data, gain=1.414)
+        self.conv2 = DenseGCNConv(hidden_dim, hidden_dim)
+
+    @jaxtyped
+    @typechecked
+    def map_low_to_high(self, num_low_nodes: int,
+                        num_high_nodes: int) -> Float[Tensor, "num_low num_high"]:
+        """Returns a matrix specifying edges from low to high nodes.
+
+        Each low node gets one edge to a high node. Each high node has an equal
+        number of connections to low nodes (to the extent possible).
+
+        This mapping is adjacency matrix A_self from the paper.
+        """
+        edges_per_high = math.ceil(num_low_nodes / num_high_nodes)
+        mapping = torch.eye(num_high_nodes, dtype=torch.float, device=self.device)
+        mapping = torch.repeat_interleave(mapping, edges_per_high, dim=0)
+        mapping = mapping[:num_low_nodes]
+        return mapping
+
+    @jaxtyped
+    @typechecked
+    def cluster_attention(self, x: Float[Tensor, "s linear"], low_to_high_mapping):
+        mid_level_representations = torch.matmul(low_to_high_mapping.t(), x)
+
+        # Intra-cluster attention
+        scores = torch.matmul(torch.matmul(mid_level_representations, self.attention_low_mid), x.t())
+
+        # Inter-cluster attention
+        inverse_mapping: Float[Tensor, "s mid"] = torch.ones_like(low_to_high_mapping) - low_to_high_mapping
+        scores = scores * inverse_mapping.t()
+        scores = F.softmax(scores, dim=1)
+
+        output = torch.matmul(scores, x) + mid_level_representations
+        return output
 
     @jaxtyped
     @typechecked
@@ -62,65 +96,32 @@ class HiPool(torch.nn.Module):
         """
 
         # ---------------------------- First Layer --------------------------- #
-        num_low_level_nodes = x.shape[0]
+        num_low_nodes = x.shape[0]
+        low_to_mid_mapping: Float[Tensor, "s mid"] = self.map_low_to_high(num_low_nodes,
+                                                                          self.num_mid_nodes)
 
-        # Adjacency matrix A_self from the paper
-        connections_per_mid_node = math.ceil(num_low_level_nodes / self.num_mid_level_nodes)
-        low_to_mid_mapping = torch.eye(self.num_mid_level_nodes)  # identity matrix
-        low_to_mid_mapping = torch.repeat_interleave(low_to_mid_mapping,
-                                                     connections_per_mid_node, dim=0)
-        low_to_mid_mapping = low_to_mid_mapping[:num_low_level_nodes].float().to(self.device)
+        mid_adjacency_matrix: Float[Tensor, "mid mid"] = torch.matmul(
+            torch.matmul(low_to_mid_mapping.t(), adjacency_matrix),
+            low_to_mid_mapping)
 
-        mid_level_representations = torch.matmul(low_to_mid_mapping.t(), x)
-
-        # Intra-cluster attention
-        scores = torch.matmul(torch.matmul(mid_level_representations, self.attention_low_mid), x.t())
-
-        # Inter-cluster attention
-        inverse_mapping = torch.ones_like(low_to_mid_mapping) - low_to_mid_mapping
-        scores = scores * inverse_mapping.t()
-        scores = F.softmax(scores, dim=1)
-
-        mid_level_representations = torch.matmul(scores, x) + mid_level_representations
-        mid_level_adjacency_matrix = torch.matmul(torch.matmul(low_to_mid_mapping.t(), adjacency_matrix),
-                                                  low_to_mid_mapping)
+        mid_representation = self.cluster_attention(x, low_to_mid_mapping)
 
         # x_mid will be the input to the next layer
-        x_mid = self.conv1(mid_level_representations, mid_level_adjacency_matrix)
+        x_mid = self.conv1(mid_representation, mid_adjacency_matrix)
         x_mid = F.relu(x_mid)
         x_mid = F.dropout(x_mid, training=self.training)[0]
 
         # --------------------------- Second Layer --------------------------- #
-        # Adjacency matrix A_self from the paper
-        connections_per_high_node = math.ceil(self.num_mid_level_nodes / self.num_high_level_nodes)
-        mid_to_high_mapping = torch.eye(self.num_high_level_nodes)
-        mid_to_high_mapping = torch.repeat_interleave(mid_to_high_mapping,
-                                                      connections_per_high_node, dim=0)
-        mid_to_high_mapping = mid_to_high_mapping[:self.num_mid_level_nodes].float().to(self.device)
+        mid_to_high_mapping = self.map_low_to_high(self.num_mid_nodes, self.num_high_level_nodes)
 
-        high_level_representations = torch.matmul(mid_to_high_mapping.t(), x_mid)
-        high_level_adjacency_matrix = torch.matmul(torch.matmul(mid_to_high_mapping.t(), mid_level_adjacency_matrix),
+        high_level_adjacency_matrix = torch.matmul(torch.matmul(mid_to_high_mapping.t(), mid_adjacency_matrix),
                                                    mid_to_high_mapping)
-
-        inverse_mapping = torch.ones_like(mid_to_high_mapping) - mid_to_high_mapping
-
-        # Intra-cluster attention
-        scores = torch.matmul(torch.matmul(high_level_representations, self.attention_mid_high), x_mid.t())
-
-        # Inter-cluster attention
-        scores = scores * inverse_mapping.t()
-        scores = F.softmax(scores, dim=1)
-
-        high_level_representations = torch.matmul(scores, x_mid) + high_level_representations
+        high_representation = self.cluster_attention(x_mid, mid_to_high_mapping)
 
         # DenseGCNConv's forward() adds a batch dimension that we don't need here
-        output = self.conv2(high_level_representations, high_level_adjacency_matrix).squeeze()
-
+        output = self.conv2(high_representation, high_level_adjacency_matrix).squeeze()
 
         output = F.relu(output)
         # This was originally output.mean(), but the paper seems to suggest sum gave better performance?
         output = output.mean(dim=0)
-        # output = F.relu(self.linear1(output))
-        # Normalize output and take log for numerical stability
-        # output = F.log_softmax(output, dim=0)
         return output
