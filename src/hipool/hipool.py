@@ -105,8 +105,8 @@ class HiPool(torch.nn.Module):
         low_mid_map: Float[Tensor, "low mid"] = self.map_low_to_high(num_low_nodes, self.num_mid_nodes)
         mid_adj_matrix: Float[Tensor, "mid mid"] = torch.matmul(torch.matmul(low_mid_map.t(), adj_matrix),
                                                                 low_mid_map)
+        # Intermediate representation of the mid-level nodes before GCN
         mid_rep: Float[Tensor, "mid in_dim"] = self.cluster_attention(x, low_mid_map, self.attention_low_mid)
-        # x_mid will be the input to the next layer
         x_mid = self.conv1(mid_rep, mid_adj_matrix)
         x_mid = F.relu(x_mid)
         x_mid: Float[Tensor, "mid hidden_dim"] = F.dropout(x_mid, training=self.training)[0]
@@ -115,10 +115,11 @@ class HiPool(torch.nn.Module):
         mid_high_map = self.map_low_to_high(self.num_mid_nodes, self.num_high_level_nodes)
 
         high_adj_matrix = torch.matmul(torch.matmul(mid_high_map.t(), mid_adj_matrix), mid_high_map)
+        # Intermediate representation of the high-level nodes before GCN
         high_rep: Float[Tensor, "high hidden_dim"] = self.cluster_attention(x_mid, mid_high_map,
                                                                             self.attention_mid_high)
 
-        # Squeeze because DenseGCNConv's forward() adds a batch dimension that we don't need
+        # Squeeze unnecessary batch dim from DenseGCNConv's forward()
         x_high: Float[Tensor, "high out_dim"] = self.conv2(high_rep, high_adj_matrix).squeeze()
         x_high = F.relu(x_high)
         # This was originally output.mean(), but the paper seems to suggest sum gave better performance?
