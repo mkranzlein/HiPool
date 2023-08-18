@@ -1,4 +1,4 @@
-from math import ceil
+import math
 
 import torch
 import torch.nn.functional as F
@@ -8,11 +8,11 @@ from torch_geometric.nn import DenseGCNConv
 
 class HiPool(torch.nn.Module):
     def __init__(self, device, input_dim, hidden_dim, output_dim):
-        super().__init__()  # hid dim 32
+        super().__init__()
 
         self.device = device
         self.num_nodes1 = 10
-        self.num_nodes2 = ceil(self.num_nodes1 / 2)
+        self.num_nodes2 = math.ceil(self.num_nodes1 / 2)
 
         self.conv1 = DenseGCNConv(input_dim, hidden_dim)
         self.conv2 = DenseGCNConv(hidden_dim, hidden_dim)
@@ -41,7 +41,7 @@ class HiPool(torch.nn.Module):
         # forward_cross_best
 
         # hipool: add sent-token cross-attention (cross-layer) attention: 2 layers
-        portion1 = ceil(x.shape[0] / self.num_nodes1)
+        portion1 = math.ceil(x.shape[0] / self.num_nodes1)
         flat_s = torch.eye(self.num_nodes1)  # identity matrix of num_nodes1 x num_nodes1
         flat_s = torch.repeat_interleave(flat_s, portion1, dim=0)[:x.shape[0], ].float().to(self.device)
 
@@ -66,7 +66,7 @@ class HiPool(torch.nn.Module):
         x = F.dropout(x, training=self.training)[0]
 
         # Second layer
-        portion2 = ceil(x.shape[0] / self.num_nodes2)
+        portion2 = math.ceil(x.shape[0] / self.num_nodes2)
         flat_s = torch.eye(self.num_nodes2)
         flat_s = torch.repeat_interleave(flat_s, portion2, dim=0)[:x.shape[0], ].float().to(self.device)
 
