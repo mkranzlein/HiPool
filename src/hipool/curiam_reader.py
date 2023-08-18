@@ -16,7 +16,6 @@ import torch
 
 from torch.utils.data import Dataset
 
-
 categories_to_ids = {}
 for i, category in enumerate(ORDERED_CATEGORIES):
     categories_to_ids[category] = i
@@ -72,8 +71,12 @@ class CuriamDataset(Dataset):
     def __len__(self) -> int:
         return len(self.documents)
 
-    def __getitem__(self, idx):
-        """  Return a single tokenized sample at a given positon [idx] from data"""
+    def __getitem__(self, idx) -> dict:
+        """Returns a specified preprocessed document from the dataset along with
+        its labels.
+
+        Used by the dataloaders during training.
+        """
 
         document = self.documents[idx]
         labels = self.labels[idx]

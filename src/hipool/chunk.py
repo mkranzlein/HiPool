@@ -1,7 +1,6 @@
 """Chunking functionality described Section 2 of the HiPool paper.
 
 https://aclanthology.org/2023.acl-short.16/
-
 """
 
 import math
