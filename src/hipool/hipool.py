@@ -28,18 +28,20 @@ class HiPool(torch.nn.Module):
         self.num_high_level_nodes = math.ceil(self.num_mid_nodes / 2)
         self.attention_mid_high = torch.nn.Parameter(torch.zeros(size=(hidden_dim, hidden_dim))).to(self.device)
         torch.nn.init.xavier_normal_(self.attention_mid_high.data, gain=1.414)
-        self.conv2 = DenseGCNConv(hidden_dim, hidden_dim)
+        self.conv2 = DenseGCNConv(hidden_dim, 16)
 
-    @jaxtyped
-    @typechecked
     def map_low_to_high(self, num_low_nodes: int,
-                        num_high_nodes: int) -> Float[Tensor, "num_low num_high"]:
+                        num_high_nodes: int) -> Float[Tensor, "low high"]:
         """Returns a matrix specifying edges from low to high nodes.
 
         Each low node gets one edge to a high node. Each high node has an equal
         number of connections to low nodes (to the extent possible).
 
         This mapping is adjacency matrix A_self from the paper.
+
+        No runtime typechecking on this function because jaxtyping doesn't know
+        what low and high are.
+
         """
         edges_per_high = math.ceil(num_low_nodes / num_high_nodes)
         mapping = torch.eye(num_high_nodes, dtype=torch.float, device=self.device)
@@ -49,24 +51,27 @@ class HiPool(torch.nn.Module):
 
     @jaxtyped
     @typechecked
-    def cluster_attention(self, x: Float[Tensor, "s linear"], low_to_high_mapping):
-        mid_level_representations = torch.matmul(low_to_high_mapping.t(), x)
+    def cluster_attention(self, x: Float[Tensor, "low low_dim"],
+                          low_to_high_mapping: Float[Tensor, "low high"],
+                          attention_weights: Float[Tensor, "low_dim low_dim"]) -> Float[Tensor, "high low_dim"]:
+        """Performs the attention computations described in eqs. 3 and 4."""
+        high_representations: Float[Tensor, "high low_dim"] = torch.matmul(low_to_high_mapping.t(), x)
 
         # Intra-cluster attention
-        scores = torch.matmul(torch.matmul(mid_level_representations, self.attention_low_mid), x.t())
+        scores = torch.matmul(torch.matmul(high_representations, attention_weights), x.t())
 
         # Inter-cluster attention
-        inverse_mapping: Float[Tensor, "s mid"] = torch.ones_like(low_to_high_mapping) - low_to_high_mapping
+        inverse_mapping: Float[Tensor, "low high"] = torch.ones_like(low_to_high_mapping) - low_to_high_mapping
         scores = scores * inverse_mapping.t()
-        scores = F.softmax(scores, dim=1)
+        scores: Float[Tensor, "high low"] = F.softmax(scores, dim=1)
 
-        output = torch.matmul(scores, x) + mid_level_representations
+        output: Float[Tensor, "high low_dim"] = torch.matmul(scores, x) + high_representations
         return output
 
     @jaxtyped
     @typechecked
-    def forward(self, x: Float[Tensor, "s linear"],
-                adjacency_matrix: Float[Tensor, "s s"]):
+    def forward(self, x: Float[Tensor, "low in_dim"],
+                adj_matrix: Float[Tensor, "low low"]):
         """A forward pass through the HiPool model.
 
         HiPool's structure is repeatable, but the paper only uses two layers,
@@ -97,31 +102,25 @@ class HiPool(torch.nn.Module):
 
         # ---------------------------- First Layer --------------------------- #
         num_low_nodes = x.shape[0]
-        low_to_mid_mapping: Float[Tensor, "s mid"] = self.map_low_to_high(num_low_nodes,
-                                                                          self.num_mid_nodes)
-
-        mid_adjacency_matrix: Float[Tensor, "mid mid"] = torch.matmul(
-            torch.matmul(low_to_mid_mapping.t(), adjacency_matrix),
-            low_to_mid_mapping)
-
-        mid_representation = self.cluster_attention(x, low_to_mid_mapping)
-
+        low_mid_map: Float[Tensor, "low mid"] = self.map_low_to_high(num_low_nodes, self.num_mid_nodes)
+        mid_adj_matrix: Float[Tensor, "mid mid"] = torch.matmul(torch.matmul(low_mid_map.t(), adj_matrix),
+                                                                low_mid_map)
+        mid_rep: Float[Tensor, "mid in_dim"] = self.cluster_attention(x, low_mid_map, self.attention_low_mid)
         # x_mid will be the input to the next layer
-        x_mid = self.conv1(mid_representation, mid_adjacency_matrix)
+        x_mid = self.conv1(mid_rep, mid_adj_matrix)
         x_mid = F.relu(x_mid)
-        x_mid = F.dropout(x_mid, training=self.training)[0]
+        x_mid: Float[Tensor, "mid hidden_dim"] = F.dropout(x_mid, training=self.training)[0]
 
         # --------------------------- Second Layer --------------------------- #
-        mid_to_high_mapping = self.map_low_to_high(self.num_mid_nodes, self.num_high_level_nodes)
+        mid_high_map = self.map_low_to_high(self.num_mid_nodes, self.num_high_level_nodes)
 
-        high_level_adjacency_matrix = torch.matmul(torch.matmul(mid_to_high_mapping.t(), mid_adjacency_matrix),
-                                                   mid_to_high_mapping)
-        high_representation = self.cluster_attention(x_mid, mid_to_high_mapping)
+        high_adj_matrix = torch.matmul(torch.matmul(mid_high_map.t(), mid_adj_matrix), mid_high_map)
+        high_rep: Float[Tensor, "high hidden_dim"] = self.cluster_attention(x_mid, mid_high_map,
+                                                                            self.attention_mid_high)
 
-        # DenseGCNConv's forward() adds a batch dimension that we don't need here
-        output = self.conv2(high_representation, high_level_adjacency_matrix).squeeze()
-
-        output = F.relu(output)
+        # Squeeze because DenseGCNConv's forward() adds a batch dimension that we don't need
+        x_high: Float[Tensor, "high out_dim"] = self.conv2(high_rep, high_adj_matrix).squeeze()
+        x_high = F.relu(x_high)
         # This was originally output.mean(), but the paper seems to suggest sum gave better performance?
-        output = output.mean(dim=0)
+        output: Float[Tensor, "out_dim"] = x_high.mean(dim=0)  # noqa F821
         return output
