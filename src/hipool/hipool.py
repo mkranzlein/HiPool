@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch_geometric.nn import DenseGCNConv
 
 
-# Following two methods are our hi-method: Feb, 2022
 class HiPool(torch.nn.Module):
     def __init__(self, device, input_dim, hidden_dim, output_dim):
         super().__init__()  # hid dim 32
