@@ -74,32 +74,35 @@ class HiPool(torch.nn.Module):
         """A forward pass through the HiPool model.
 
         HiPool's structure is repeatable, but the paper only uses two layers,
-        so that's what is used here.
+        so that's what is used here. The input gets treated as the low-level
+        nodes, which with two HiPool layers means there are low-, mid-, and
+        high-level nodes.
 
-        HiPool takes as input an h-dimensional representation for each chunk in
-        a sequence. These will be called low-level node representations. We
-        describe the interaction between the low- and mid-level nodes. The
-        logic for the interaction between the mid- and high-level nodes is
-        the same.
+        A low node corresponds to a representation of one chunk of a sequence.
+        Each low node is represented by a vector of length in_dim. The low nodes
+        have edges between them following a path graph, and each low node is
+        connected to one mid node.
 
-        The low-level nodes have edges between them (following a path graph),
-        And they also get edges to a mid-level node (the first of the two
-        HiPool layers). Each low-level node is connected to one mid-level
-        node, and the for each mid-level node, the number of connections to
-        a low-level node is the same (except for the last mid-level node,
-        which just gets the remaining low-level nodes).
-
-        An attention mechanism calculates scores first among the nodes within a
-        cluster and then among all the other clusters. The attention-weighted
-        scores are added to the representations of the mid-level nodes.
+        A representation of the mid nodes is calculated by multiplying the low
+        node representations by the connections to the mid nodes. An attention
+        mechanism then calculates scores between a cluster of low
+        nodes and the mid node the cluster is connected to. It then calculates
+        scores for the other mid nodes the cluster is not connected to. The
+        mid node representations are updated by adding the attention scores.
 
         A weighted adjacency matrix is created to relate the mid-level nodes to
         each other based on how the low-level nodes were related to each other
         (following eq. 2 from the paper). With a path graph, each mid-level node
         ends up with high weight given to itself and its neighbors.
 
-        Finally, a graph convolution operation is performed using the mid-level
-        node representations and the weighted adjacency matrix.
+        Finally, a graph convolution operation is performed using the mid node
+        representations and the weighted adjacency matrix. All of these steps
+        are repeated in the second layer but with the mid and high nodes instead
+        of the low and mid nodes.
+
+        ReLu is applied to the output of the second layer and the
+        representations of each high node are averaged to provide a single
+        sequence encoding vector of length out_dim.
         """
 
         # ---------------------------- First Layer --------------------------- #
