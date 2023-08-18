@@ -1,13 +1,14 @@
-from hipool.hipool import HiPool
+"""Sequence- and Token-level classification models."""
 
 import networkx as nx
 import transformers
 import torch
-
 from jaxtyping import Float, Integer, jaxtyped
 from torch import nn, Tensor
 from torch.nn.utils.rnn import pad_sequence
 from typeguard import typechecked
+
+from hipool.hipool import HiPool
 
 
 class SequenceClassificationModel(nn.Module):
@@ -122,7 +123,7 @@ class TokenClassificationModel(nn.Module):
         self.device = device
         self.pooling_method = pooling_method
 
-        self.gcn_output_dim = 10
+        self.gcn_output_dim = 32
 
         self.linear = nn.Linear(768, 128).to(device)
         self.linear2 = nn.Linear(768 + self.gcn_output_dim, num_labels).to(device)
