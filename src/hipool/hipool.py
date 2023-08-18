@@ -101,7 +101,7 @@ class HiPool(torch.nn.Module):
         of the low and mid nodes.
 
         ReLu is applied to the output of the second layer and the
-        representations of each high node are averaged to provide a single
+        representations of the high nodes are averaged to provide a single
         sequence encoding vector of length out_dim.
         """
 
