@@ -3,8 +3,10 @@ import math
 import torch
 import torch.nn.functional as F
 
+from jaxtyping import Float, Integer, jaxtyped
+from torch import Tensor
 from torch_geometric.nn import DenseGCNConv
-
+from typeguard import typechecked
 
 class HiPool(torch.nn.Module):
     def __init__(self, device, input_dim, hidden_dim, output_dim):
@@ -36,30 +38,42 @@ class HiPool(torch.nn.Module):
 
         # add self-attention for l1
         self.multihead_attn_l1 = torch.nn.MultiheadAttention(embed_dim=32, num_heads=2)
-
-    def forward(self, x, adjacency_matrix):
+# 633, 128; 633, 633
+    @jaxtyped
+    @typechecked
+    def forward(self, x: Float[Tensor, "s linear"],
+                adjacency_matrix: Float[Tensor, "s s"]):
         # forward_cross_best
 
         # hipool: add sent-token cross-attention (cross-layer) attention: 2 layers
+        # portion1 is the number of input chunks (lower level nodes) that map to
+        # each middle level node
         portion1 = math.ceil(x.shape[0] / self.num_nodes1)
+        # flat_s maps each input-level node to a middle-level node
         flat_s = torch.eye(self.num_nodes1)  # identity matrix of num_nodes1 x num_nodes1
-        flat_s = torch.repeat_interleave(flat_s, portion1, dim=0)[:x.shape[0], ].float().to(self.device)
+        flat_s = torch.repeat_interleave(flat_s, portion1, dim=0)
+        flat_s = flat_s[:x.shape[0], ].float().to(self.device)
 
-        # first layer
+
+        # x1 is a [num_nodes1, linear], where each row represents one middle node
         x1 = torch.matmul(flat_s.t(), x)  # (5,128)
-        self.adj1 = torch.matmul(torch.matmul(flat_s.t(), adjacency_matrix), flat_s)
+        scores = torch.matmul(torch.matmul(x1, self.cross_attention_l1), x.t())
 
-        # Testing cross-layer attention'
         # generate inverse adj for cross-layer attention
         reverse_s = torch.ones_like(flat_s) - flat_s
-        scores = torch.matmul(torch.matmul(x1, self.cross_attention_l1), x.t())
         # mask own cluster and do cross-cluster
         scores = scores * reverse_s.t()
         alpha = F.softmax(scores, dim=1)
         # compute \alpha * x
         x1 = torch.matmul(alpha, x) + x1
-        # Cross-layer ends
 
+        # The high level nodes get related to each other based on equation 2
+        # from the paper. With a path graph, each node ends up with high weight
+        # given to itself and its neighbors.
+        self.adj1 = torch.matmul(torch.matmul(flat_s.t(), adjacency_matrix), flat_s)
+        # This is a convolution using the node representations for the mid-level
+        # nodes and the weighted adjacency matrix that relates each mid-level
+        # node to itself.
         x = self.conv1(x1, self.adj1)
 
         x = F.relu(x)
