@@ -85,10 +85,10 @@ class HiPool(torch.nn.Module):
 
         A representation of the mid nodes is calculated by multiplying the low
         node representations by the connections to the mid nodes. An attention
-        mechanism then calculates scores between a cluster of low
-        nodes and the mid node the cluster is connected to. It then calculates
-        scores for the other mid nodes the cluster is not connected to. The
-        mid node representations are updated by adding the attention scores.
+        mechanism then calculates scores between a cluster of low nodes and the
+        mid node that cluster is connected to. It then calculates scores for the
+        other mid nodes the cluster is not connected to. The mid node
+        representations are updated by adding the attention scores.
 
         A weighted adjacency matrix is created to relate the mid-level nodes to
         each other based on how the low-level nodes were related to each other
