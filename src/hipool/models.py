@@ -1,11 +1,3 @@
-##############################################################
-#
-# Bert_Classification.py
-# This file contains the code for fine-tuning BERT using a
-# simple classification head.
-#
-##############################################################
-
 from hipool.hipool import HiPool
 
 import networkx as nx
