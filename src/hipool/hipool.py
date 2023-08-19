@@ -27,7 +27,7 @@ class HiPool(torch.nn.Module):
         self.num_high_level_nodes = math.ceil(self.num_mid_nodes / 2)
         self.attention_mid_high = torch.nn.Parameter(torch.zeros(size=(hidden_dim, hidden_dim))).to(self.device)
         torch.nn.init.xavier_normal_(self.attention_mid_high.data, gain=1.414)
-        self.conv2 = DenseGCNConv(hidden_dim, 16)
+        self.conv2 = DenseGCNConv(hidden_dim, output_dim)
 
     def map_low_to_high(self, num_low_nodes: int,
                         num_high_nodes: int) -> Float[Tensor, "low high"]:

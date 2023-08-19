@@ -123,7 +123,7 @@ class TokenClassificationModel(nn.Module):
         self.device = device
         self.pooling_method = pooling_method
 
-        self.gcn_output_dim = 32
+        self.gcn_output_dim = 16
 
         self.linear = nn.Linear(768, 128).to(device)
         self.linear2 = nn.Linear(768 + self.gcn_output_dim, num_labels).to(device)
