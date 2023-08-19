@@ -104,7 +104,7 @@ def eval_token_classification(model_output: Tensor[Float, "s c num_labels"],
                               targets: list[Float[Tensor, "s c num_labels"]],
                               overlap_len, device,
                               num_labels):
-    """Remove extra token predictions from output and evaluate.
+    """Remove extra token predictions from output then evaluate.
 
     HiPool takes overlapping chunks as input. For sequence classification, this
     isn't an issue, but for token classification, that means we have multiple
