@@ -15,4 +15,5 @@ dependencies:
   - scikit-learn
   - pip:
     - torch_geometric
+    - torcheval
     - typeguard
