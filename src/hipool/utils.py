@@ -2,7 +2,11 @@ import time
 
 import numpy as np
 import torch
+from jaxtyping import Float, jaxtyped
+from torcheval.metrics import BinaryPrecision, BinaryRecall, BinaryF1Score
+from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
+from typeguard import typechecked
 
 
 def collate(batches):
@@ -92,3 +96,61 @@ def eval_loop(data_loader, model, device):
         fin_targets.append(target_labels.cpu().detach().numpy())
         fin_outputs.append(torch.softmax(outputs, dim=1).cpu().detach().numpy())
     return np.concatenate(fin_outputs), np.concatenate(fin_targets), losses
+
+
+@jaxtyped
+@typechecked
+def eval_token_classification(model_output: Tensor[Float, "s c num_labels"],
+                              targets: list[Float[Tensor, "s c num_labels"]],
+                              overlap_len, device,
+                              num_labels):
+    """Remove extra token predictions from output and evaluate.
+
+    HiPool takes overlapping chunks as input. For sequence classification, this
+    isn't an issue, but for token classification, that means we have multiple
+    predictions for some tokens. We remove those my masking out the overlapping
+    portion of each chunk, except for the first one in the document, which has
+    no overlap.
+
+    All tokens are still accounted for since the removed tokens will still have
+    predictions from when they made up the end of the preceding chunk.
+    """
+
+    num_chunks = model_output.shape[0]
+    chunk_len = model_output.shape[1]
+    overlap_mask = torch.zeros((chunk_len), dtype=torch.int)
+    overlap_mask[:overlap_len] = 1
+    overlap_mask.repeat((num_chunks))
+    overlap_mask[:overlap_len] = 0  # There is no overlap for the first chunk
+
+    token_output = model_output.reshape(-1, num_labels)
+    # Select only the tokens that aren't overlaps
+    deduplicated_output = token_output[overlap_mask == 0]
+
+    # Threshold each label at .5 to get bool predictions then convert to float
+    predictions = (deduplicated_output > .5).float()  # noqa F841
+
+    # ---------- Sample implementation of binary multilabel metrics ---------- #
+    # Rework this implementation to update on each doc/batch and then print
+    # output
+    num_labels = 5
+    metrics = [{"p": BinaryPrecision(),
+                "r": BinaryRecall(),
+                "f": BinaryF1Score()} for i in range(num_labels)]
+
+    num_examples = 30
+    # Toy data
+    pred = (torch.randn((num_examples, num_labels)) > .5).int()
+    labels = (torch.randn((num_examples, num_labels)) > .2).int()
+
+    for i in range(num_labels):
+        metrics[i]["p"].update(pred[:, i], labels[:, i])
+        metrics[i]["r"].update(pred[:, i], labels[:, i])
+        metrics[i]["f"].update(pred[:, i], labels[:, i])
+
+    print("\tp\tr\tf")
+    for i, class_metrics in enumerate(metrics):
+        p = class_metrics["p"].compute().item()
+        r = class_metrics["r"].compute().item()
+        f = class_metrics["r"].compute().item()
+        print(f"class {i}\t{p:.4f}\t{r:.4f}\t{f:.4f}")
