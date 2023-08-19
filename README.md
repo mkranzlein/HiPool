@@ -45,10 +45,8 @@ I recommend taking a look at the [jaxtyping docs](https://docs.kidger.site/jaxty
 - Batching right now should allow for single documents, but worth testing
 - Chunking logic could be more clear
 - Last chunk of each doc might be improperly ignored?
-- HiPool gcn code needs type annotations and improved clarity
-- Eval script needs to be adapted to token level classification
-    - Overlaps in particular will need to be accounted for. Can start with full first chunk, then start with non-overlapping part of next chunk
-
+- Eval needs final pieces put together and then needs to be tested
+- Decide on consistent variables for type annotations
 ## Cite HiPool
 ```
 @inproceedings{li2023hipool,
