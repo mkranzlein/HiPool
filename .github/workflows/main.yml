@@ -25,3 +25,7 @@ jobs:
         post-cleanup: 'all'
     - name: Run tests
       run: pytest
+      shell: bash -el {0}
+    - name: Run tests (Windows)
+      run: pytest
+      shell: pwsh
