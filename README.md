@@ -4,7 +4,7 @@
 
 A work-in-progress modified implementation of HiPool to support experiments on [CuRIAM](https://arxiv.org/abs/2305.14719).
 
-HiPool is described in the paper "[HiPool: Modeling Long Documents Using Graph Neural Networks](https://aclanthology.org/2023.acl-short.16/)" from ACL 2023.
+HiPool, from **Hi**erarchical **Pool**ing, is described in the paper "[HiPool: Modeling Long Documents Using Graph Neural Networks](https://aclanthology.org/2023.acl-short.16/)" from ACL 2023.
 
 This is **not the original repo for HiPool and I am not an author on the HiPool paper**. Please see that repo [here](https://github.com/irenezihuili/hipool).
 
