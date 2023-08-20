@@ -1,0 +1,27 @@
+name: HiPool
+
+on: push
+
+jobs:
+  main:
+    strategy:
+      matrix:
+        python: [3.9, 3.10]
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+    - uses: actions/checkout@v3
+    - name: Set up environment
+    - uses: mamba-org/setup-micromamba@v1
+      with:
+        micromamba-version: '1.3.1-0'
+        environment-file: environment.yml
+        init-shell: >-
+          bash
+          powershell
+        cache-environment: true
+        post-cleanup: 'all'
+    - name: Run tests
+      run: pytest
