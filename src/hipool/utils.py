@@ -100,7 +100,7 @@ def eval_loop(data_loader, model, device):
 
 @jaxtyped
 @typechecked
-def eval_token_classification(model_output: Tensor[Float, "s c num_labels"],
+def eval_token_classification(model_output: Float[Tensor, "s c num_labels"],
                               targets: list[Float[Tensor, "s c num_labels"]],
                               overlap_len, device,
                               num_labels):
