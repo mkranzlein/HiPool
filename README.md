@@ -4,7 +4,9 @@
 
 A work-in-progress modified implementation of HiPool to support experiments on [CuRIAM](https://arxiv.org/abs/2305.14719).
 
-This is **not the original repo for HiPool** and I am not an author on the HiPool paper. Please see that repo [here](https://github.com/irenezihuili/hipool).
+HiPool is described in the paper "[HiPool: Modeling Long Documents Using Graph Neural Networks](https://aclanthology.org/2023.acl-short.16/)" from ACL 2023.
+
+This is **not the original repo for HiPool and I am not an author on the HiPool paper**. Please see that repo [here](https://github.com/irenezihuili/hipool).
 
 ## Links
 - HiPool paper: https://aclanthology.org/2023.acl-short.16/
@@ -12,10 +14,10 @@ This is **not the original repo for HiPool** and I am not an author on the HiPoo
 - HiPool's implementation is based on: https://github.com/helmy-elrais/RoBERT_Recurrence_over_BERT/blob/master/train.ipynb
 
 ## Setup
-1. Create conda environment.
+1. Create conda/mamba environment.
     ```
-    conda env create -f environment.yml
-    conda activate hipool
+    mamba env create -f environment.yml
+    mamba activate hipool
     ```
 2. Install hipool locally.
     ```
@@ -33,7 +35,7 @@ This is **not the original repo for HiPool** and I am not an author on the HiPoo
 
 This repo uses [jaxtyping](https://github.com/google/jaxtyping) and [typeguard](https://typeguard.readthedocs.io/) to enforce correct tensor dimensions at runtime. If you see an unfamiliar type annotation or decorators like in the example the below, it's for type checking.
 
-```
+```python
 @jaxtyped
 @typechecked
 def some_function(x: Float[torch.Tensor, "10, 768"]):
