@@ -10,8 +10,9 @@ dependencies:
   - numpy
   - pandas
   - pip
-  - pytorch::pytorch
+  - pytest
   - python
+  - pytorch::pytorch
   - scikit-learn
   - pip:
     - torch_geometric
