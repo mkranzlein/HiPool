@@ -25,7 +25,7 @@ jobs:
         post-cleanup: 'none'
     - name: Run tests
       run: pytest
-      shell: bash -el {0}
-    - name: Run tests (Windows)
-      run: pytest
+      # See 
+      # https://github.com/mamba-org/setup-micromamba#about-login-shells
+      # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsshell
       shell: pwsh
