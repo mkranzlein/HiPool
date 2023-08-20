@@ -1,3 +1,5 @@
+[![status](https://github.com/mkranzlein/HiPool/actions/workflows/main.yml/badge.svg)](https://github.com/mkranzlein/HiPool/actions/workflows/main.yml)
+
 # HiPool
 
 A work-in-progress modified implementation of HiPool to support experiments on [CuRIAM](https://arxiv.org/abs/2305.14719).
