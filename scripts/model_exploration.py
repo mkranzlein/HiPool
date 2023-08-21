@@ -20,7 +20,6 @@ if is_curiam:
     dataset = CuriamDataset(
         json_file_path="data/curiam_sample.json",
         tokenizer=bert_tokenizer,
-        max_len=1024,
         chunk_len=20,
         overlap_len=10)
 else:
