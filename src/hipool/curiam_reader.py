@@ -12,6 +12,7 @@ import json
 
 import torch
 from torch.utils.data import Dataset
+from transformers import BertTokenizer
 
 from hipool.chunk import chunk_document
 from hipool.curiam_categories import ORDERED_CATEGORIES
@@ -27,13 +28,13 @@ class CuriamDataset(Dataset):
     https://github.com/mkranzlein/curiam/blob/main/corpus/corpus.json
     """
 
-    def __init__(self, json_file_path, tokenizer, max_len, chunk_len, overlap_len):
+    def __init__(self, json_file_path: str, tokenizer: BertTokenizer,
+                 chunk_len: int, overlap_len: int):
         processed_json = self.read_json(json_file_path)
         self.documents = processed_json["documents"]
         self.labels = processed_json["labels"]
         self.num_class = 9
         self.tokenizer = tokenizer
-        self.max_len = max_len
         self.chunk_len = chunk_len
         self.overlap_len = overlap_len
 
