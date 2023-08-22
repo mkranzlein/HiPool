@@ -45,11 +45,8 @@ def some_function(x: Float[torch.Tensor, "10, 768"]):
 I recommend taking a look at the [jaxtyping docs](https://docs.kidger.site/jaxtyping/).
 
 ## TODOs
-- Eval needs to account for wordpiece splits
 - Some long documents are too big for GPU vram right now
 - Batching right now should allow for single documents, but worth testing
-- Chunking logic could be more clear
-- Last chunk of each doc might be improperly ignored?
 - Eval needs final pieces put together and then needs to be tested
 - Decide on consistent variables for type annotations
 ## Cite HiPool
