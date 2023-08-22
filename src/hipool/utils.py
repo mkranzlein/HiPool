@@ -5,17 +5,16 @@ import torch
 from jaxtyping import Float, jaxtyped
 from torcheval.metrics import BinaryPrecision, BinaryRecall, BinaryF1Score
 from torch import Tensor
-from torch.nn.utils.rnn import pad_sequence
 from typeguard import typechecked
 
 
 def collate(batches):
     # Return batches
-    return [{key: torch.stack(value) for key, value in batch.items()} for batch in batches]
+    return [{key: value for key, value in batch.items()} for batch in batches]
 
 
 def loss_fun(outputs, targets):
-    loss = torch.nn.CrossEntropyLoss()
+    loss = torch.nn.BCEWithLogitsLoss()
     return loss(outputs, targets)
 
 
@@ -43,26 +42,34 @@ def train_loop(data_loader, model, optimizer, device, scheduler=None):
 
     for batch_idx, batch in enumerate(data_loader):
 
-        ids = [data["ids"] for data in batch]  # size of 8
-        mask = [data["mask"] for data in batch]
+        ids = [data["input_ids"] for data in batch]  # size of 8
+        mask = [data["attention_mask"] for data in batch]
+        first_subword_masks = [data["first_subword_mask"] for data in batch]
         token_type_ids = [data["token_type_ids"] for data in batch]
-        targets = [data["targets"] for data in batch]  # length: 8
+        targets = [data["labels"] for data in batch]  # length: 8
 
-        # Here x[0] is used because the label is sequence-level, which
-        # makes the label the same for all chunks from a sequence
-
-        # Chunk
-        # target_labels = torch.stack([x.squeeze()[0] for x in targets]).float().to(device)
-
-        # Token-level
-
-        padded_labels = pad_sequence(targets).float().to(device)
-        padded_labels = padded_labels.permute(1, 0, 2, 3)
         optimizer.zero_grad()
-
         outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
 
-        loss = loss_fun(outputs, padded_labels)
+        """ Don't include in loss or eval:
+        - Predictions for subwords that aren't the first subword of a token
+        - [CLS], [SEP], or [PAD]
+        - Redundant tokens from overlapping chunks
+        """
+        outputs_to_eval = []
+        for b in range(len(batch)):
+            eval_mask = get_eval_mask(ids[b], 10, outputs.shape[1])
+            sample_output = outputs[b, :, :, :]
+            # TODO: Assert dimensions here
+            sample_output = sample_output[eval_mask == 1]
+            sample_output = sample_output[torch.tensor(first_subword_masks[b]) == 1]
+            outputs_to_eval.append(sample_output)
+
+        outputs_to_eval = torch.cat(outputs_to_eval, dim=0).to(device)
+        # TODO: Figure out types
+        # outputs_to_eval = (outputs_to_eval > .5).long()
+        targets = torch.cat(targets, dim=0).float().to(device)
+        loss = loss_fun(outputs_to_eval, targets)
         loss.backward()
         model.float()
         optimizer.step()
@@ -83,8 +90,8 @@ def eval_loop(data_loader, model, device):
     fin_outputs = []
     losses = []
     for batch_idx, batch in enumerate(data_loader):
-        ids = [data["ids"] for data in batch]  # size of 8
-        mask = [data["mask"] for data in batch]
+        ids = [data["input_ids"] for data in batch]  # size of 8
+        mask = [data["attention_mask"] for data in batch]
         token_type_ids = [data["token_type_ids"] for data in batch]
         targets = [data["targets"] for data in batch]  # length: 8
         with torch.no_grad():
@@ -100,8 +107,33 @@ def eval_loop(data_loader, model, device):
 
 @jaxtyped
 @typechecked
-def eval_token_classification(model_output: Float[Tensor, "s c num_labels"],
-                              targets: list[Float[Tensor, "s c num_labels"]],
+def get_eval_mask(seq_input_ids,  # : Integer[Tensor, "k c"],
+                  overlap_len, longest_seq):
+    """Create a mask to identify which tokens should be evaluated."""
+    # 1 for real tokens, 0 for special tokens
+    pad_length = longest_seq - seq_input_ids.shape[0]
+    if pad_length != 0:
+        input_ids_padding = torch.zeros(pad_length, seq_input_ids.shape[1])
+        seq_input_ids = torch.cat((seq_input_ids, input_ids_padding), dim=0)
+    real_token_mask = torch.isin(elements=seq_input_ids,
+                                 test_elements=torch.tensor([101, 0, 102]),
+                                 invert=True).long()
+
+    num_chunks = seq_input_ids.shape[0]
+    chunk_len = seq_input_ids.shape[1]
+    overlap_mask = torch.zeros((num_chunks, chunk_len), dtype=torch.int)
+    overlap_mask[:, 1:overlap_len + 1] = 1
+    # Reset first chunk overlap to 0 for each document in the batch
+    overlap_mask[0, 1:overlap_len + 1] = 0
+    eval_mask = torch.bitwise_and(real_token_mask, ~overlap_mask)
+    return eval_mask
+
+
+@jaxtyped
+@typechecked
+def eval_token_classification(input_ids,
+                              model_output: Float[Tensor, "k c num_labels"],
+                              targets: list[Float[Tensor, "k c num_labels"]],
                               overlap_len, device,
                               num_labels):
     """Remove extra token predictions from output then evaluate.

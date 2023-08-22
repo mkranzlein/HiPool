@@ -6,27 +6,29 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import AdamW, BertTokenizer, get_linear_schedule_with_warmup
+from transformers import AdamW, BertTokenizerFast, get_linear_schedule_with_warmup
 
 from hipool.curiam_reader import CuriamDataset
 from hipool.imdb_reader import IMDBDataset
 from hipool.models import SequenceClassificationModel, TokenClassificationModel
 from hipool.utils import collate, train_loop
 
-bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+bert_tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased', do_lower_case=True)
 is_curiam = True
+
+chunk_len = 20
 
 if is_curiam:
     dataset = CuriamDataset(
         json_file_path="data/curiam_sample.json",
         tokenizer=bert_tokenizer,
-        chunk_len=20,
+        chunk_len=chunk_len,
         overlap_len=10)
 else:
     dataset = IMDBDataset(file_path="data/imdb_sample.csv",
                           tokenizer=bert_tokenizer,
                           max_len=1024,
-                          chunk_len=20,
+                          chunk_len=chunk_len,
                           overlap_len=10)
 
 asdf = dataset[0]
@@ -73,7 +75,7 @@ chunk_model = False
 if chunk_model:
     model = SequenceClassificationModel(args="", num_labels=2, device=device).to(device)
 else:
-    model = TokenClassificationModel(args="", num_labels=9, device=device).to(device)
+    model = TokenClassificationModel(args="", num_labels=9, chunk_len=chunk_len, device=device).to(device)
 # else:
 #     model = TokenLevelModel(num_class=dataset.num_class, device=device).to(device)
 
