@@ -9,3 +9,9 @@ ORDERED_CATEGORIES = [
     "Example Use",
     "Appeal to Meaning",
 ]
+
+REDUCED_CATEGORIES = [
+    "Focal Term",
+    "Direct Quote",
+    "Legal Source",
+    ]
