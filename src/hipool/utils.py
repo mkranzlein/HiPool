@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from jaxtyping import Float, jaxtyped
 from torcheval.metrics import BinaryPrecision, BinaryRecall, BinaryF1Score
-from torch import Tensor
+from torch import nn, Tensor
 from typeguard import typechecked
 
 
@@ -33,7 +33,7 @@ def evaluate(target, predicted):
     }
 
 
-def train_loop(data_loader, model, optimizer, device, scheduler=None):
+def train_loop(data_loader, model, optimizer, device, overlap_len, scheduler=None):
     '''optimized function for Hi-BERT'''
 
     model.train()
@@ -58,7 +58,7 @@ def train_loop(data_loader, model, optimizer, device, scheduler=None):
         """
         outputs_to_eval = []
         for b in range(len(batch)):
-            eval_mask = get_eval_mask(ids[b], 10, outputs.shape[1])
+            eval_mask = get_eval_mask(ids[b], overlap_len, outputs.shape[1])
             sample_output = outputs[b, :, :, :]
             # TODO: Assert dimensions here
             sample_output = sample_output[eval_mask == 1]
@@ -69,6 +69,7 @@ def train_loop(data_loader, model, optimizer, device, scheduler=None):
         # TODO: Figure out types
         # outputs_to_eval = (outputs_to_eval > .5).long()
         targets = torch.cat(targets, dim=0).float().to(device)
+        print(sum(targets))
         loss = loss_fun(outputs_to_eval, targets)
         loss.backward()
         model.float()
@@ -131,10 +132,10 @@ def get_eval_mask(seq_input_ids,  # : Integer[Tensor, "k c"],
 
 @jaxtyped
 @typechecked
-def eval_token_classification(input_ids,
-                              model_output: Float[Tensor, "k c num_labels"],
-                              targets: list[Float[Tensor, "k c num_labels"]],
-                              overlap_len, device,
+def eval_token_classification(data_loader,
+                              model,
+                              device,
+                              overlap_len,
                               num_labels):
     """Remove extra token predictions from output then evaluate.
 
@@ -148,41 +149,51 @@ def eval_token_classification(input_ids,
     predictions from when they made up the end of the preceding chunk.
     """
 
-    num_chunks = model_output.shape[0]
-    chunk_len = model_output.shape[1]
-    overlap_mask = torch.zeros((chunk_len), dtype=torch.int)
-    overlap_mask[:overlap_len] = 1
-    overlap_mask.repeat((num_chunks))
-    overlap_mask[:overlap_len] = 0  # There is no overlap for the first chunk
+    model.eval()
+    metrics = [{"p": BinaryPrecision(device=device),
+                "r": BinaryRecall(device=device),
+                "f": BinaryF1Score(device=device)} for i in range(num_labels)]
+    for batch_idx, batch in enumerate(data_loader):
 
-    token_output = model_output.reshape(-1, num_labels)
-    # Select only the tokens that aren't overlaps
-    deduplicated_output = token_output[overlap_mask == 0]
+        ids = [data["input_ids"] for data in batch]  # size of 8
+        mask = [data["attention_mask"] for data in batch]
+        first_subword_masks = [data["first_subword_mask"] for data in batch]
+        token_type_ids = [data["token_type_ids"] for data in batch]
+        targets = [data["labels"] for data in batch]  # length: 8
 
-    # Threshold each label at .5 to get bool predictions then convert to float
-    predictions = (deduplicated_output > .5).float()  # noqa F841
+        outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
 
-    # ---------- Sample implementation of binary multilabel metrics ---------- #
-    # Rework this implementation to update on each doc/batch and then print
-    # output
-    num_labels = 5
-    metrics = [{"p": BinaryPrecision(),
-                "r": BinaryRecall(),
-                "f": BinaryF1Score()} for i in range(num_labels)]
+        """ Don't include in loss or eval:
+        - Predictions for subwords that aren't the first subword of a token
+        - [CLS], [SEP], or [PAD]
+        - Redundant tokens from overlapping chunks
+        """
+        outputs_to_eval = []
+        for b in range(len(batch)):
+            eval_mask = get_eval_mask(ids[b], overlap_len, outputs.shape[1])
+            sample_output = outputs[b, :, :, :]
+            # TODO: Assert dimensions here
+            sample_output = sample_output[eval_mask == 1]
+            sample_output = sample_output[torch.tensor(first_subword_masks[b]) == 1]
+            outputs_to_eval.append(sample_output)
 
-    num_examples = 30
-    # Toy data
-    pred = (torch.randn((num_examples, num_labels)) > .5).int()
-    labels = (torch.randn((num_examples, num_labels)) > .2).int()
-
-    for i in range(num_labels):
-        metrics[i]["p"].update(pred[:, i], labels[:, i])
-        metrics[i]["r"].update(pred[:, i], labels[:, i])
-        metrics[i]["f"].update(pred[:, i], labels[:, i])
+        outputs_to_eval = torch.cat(outputs_to_eval, dim=0).to(device)
+        # TODO: Figure out types
+        # outputs_to_eval = (outputs_to_eval > .5).long()
+        targets = torch.cat(targets, dim=0).to(device)
+        sigmoid_outputs = nn.functional.sigmoid(outputs_to_eval)
+        predictions = (sigmoid_outputs > .5).long().to(device)
+        # loss = loss_fun(outputs_to_eval, targets)
+        
+        for i in range(num_labels):
+            metrics[i]["p"].update(predictions[:, i], targets[:, i])
+            metrics[i]["r"].update(predictions[:, i], targets[:, i])
+            metrics[i]["f"].update(predictions[:, i], targets[:, i])
 
     print("\tp\tr\tf")
     for i, class_metrics in enumerate(metrics):
         p = class_metrics["p"].compute().item()
         r = class_metrics["r"].compute().item()
-        f = class_metrics["r"].compute().item()
+        f = class_metrics["f"].compute().item()
         print(f"class {i}\t{p:.4f}\t{r:.4f}\t{f:.4f}")
+
