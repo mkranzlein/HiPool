@@ -37,7 +37,6 @@ def chunk_document(input_ids: list[int], first_subword_mask, chunk_len: int, ove
         else:
             current_idx += chunk_len - overlap_len
 
-    print(sum([len(x) for x in chunks["first_subword_mask"]]))
     last_chunk_len = chunks["input_ids"][-1].shape[0]
     last_chunk_ids_padding = torch.zeros((chunk_len - last_chunk_len), dtype=torch.long)  # 0 is pad token
     chunks["input_ids"][-1] = torch.cat((chunks["input_ids"][-1], last_chunk_ids_padding))
