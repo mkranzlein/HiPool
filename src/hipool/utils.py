@@ -69,7 +69,6 @@ def train_loop(data_loader, model, optimizer, device, overlap_len, scheduler=Non
         # TODO: Figure out types
         # outputs_to_eval = (outputs_to_eval > .5).long()
         targets = torch.cat(targets, dim=0).float().to(device)
-        print(sum(targets))
         loss = loss_fun(outputs_to_eval, targets)
         loss.backward()
         model.float()
@@ -77,10 +76,6 @@ def train_loop(data_loader, model, optimizer, device, overlap_len, scheduler=Non
         if scheduler:
             scheduler.step()
         losses.append(loss.item())
-        if batch_idx % 10 == 0:
-            print(
-                f"___ batch index = {batch_idx} / {len(data_loader)} ({100*batch_idx / len(data_loader):.2f}%), loss = {np.mean(losses[-10:]):.4f}, time = {time.time()-t0:.2f} secondes ___")  # noqa E501
-            t0 = time.time()
 
     return losses
 
