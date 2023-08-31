@@ -23,7 +23,7 @@ for i, category in enumerate(SINGLE_CATEGORY):
     categories_to_ids[category] = i
 
 
-class CuriamDataset(Dataset):
+class CuriamSentDataset(Dataset):
     """Reads a file formatted like CuRIAM's corpus.json.
 
     https://github.com/mkranzlein/curiam/blob/main/corpus/corpus.json

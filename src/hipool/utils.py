@@ -13,6 +13,10 @@ def collate(batches):
     return [{key: value for key, value in batch.items()} for batch in batches]
 
 
+def single_label_loss(outputs, targets):
+    loss = torch.nn.BCEWithLogitsLoss()
+    return loss(outputs, targets)
+
 def loss_fun(outputs, targets):
     loss = torch.nn.BCEWithLogitsLoss()
     return loss(outputs, targets)
@@ -69,8 +73,9 @@ def train_loop(data_loader, model, optimizer, device, overlap_len, scheduler=Non
         # TODO: Figure out types
         # outputs_to_eval = (outputs_to_eval > .5).long()
         targets = torch.cat(targets, dim=0).float().to(device)
-        print(sum(targets))
-        loss = loss_fun(outputs_to_eval, targets)
+        num_pos = sum(targets)
+        loss = single_label_loss(outputs_to_eval, targets)
+        # loss = loss_fun(outputs_to_eval, targets)
         loss.backward()
         model.float()
         optimizer.step()
@@ -184,7 +189,6 @@ def eval_token_classification(data_loader,
         sigmoid_outputs = nn.functional.sigmoid(outputs_to_eval)
         predictions = (sigmoid_outputs > .5).long().to(device)
         # loss = loss_fun(outputs_to_eval, targets)
-        
         for i in range(num_labels):
             metrics[i]["p"].update(predictions[:, i], targets[:, i])
             metrics[i]["r"].update(predictions[:, i], targets[:, i])

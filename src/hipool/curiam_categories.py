@@ -15,3 +15,6 @@ REDUCED_CATEGORIES = [
     "Direct Quote",
     "Legal Source",
     ]
+
+SINGLE_CATEGORY = [
+    "Metalinguistic Cue"]
