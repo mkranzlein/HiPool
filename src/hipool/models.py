@@ -70,6 +70,16 @@ class TokenClassificationModel(nn.Module):
             token_type_ids: A list of varied-length tensors token_type_ids.
               All 0s.
         """
+        
+        # Get hipool embedding
+        
+        # Forward pass happens on one or more documents
+        # One is the minimum because hipool needs all of the document's chunks
+        # Pipeline: send document through bert sentence by sentence
+        
+        # Chunking approaches: equal number of sentences, equal number of tokens,
+        #   unequal number of sentences that approximates an equal number of tokens
+        
 
         # Pad such that each sequence has the same number of chunks
         # Padding chunks c-dim vectors, where all the input ids are 0, which is
