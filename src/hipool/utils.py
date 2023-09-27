@@ -34,7 +34,6 @@ def evaluate(target, predicted):
 
 
 def train_loop(data_loader, model, optimizer, device, overlap_len, scheduler=None):
-    '''optimized function for Hi-BERT'''
 
     model.train()
     t0 = time.time()
