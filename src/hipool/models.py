@@ -3,7 +3,6 @@
 b: batch_size
 k: longest sequence length (in number of chunks)
 c: chunk length (in tokens)
-
 """
 
 import networkx as nx

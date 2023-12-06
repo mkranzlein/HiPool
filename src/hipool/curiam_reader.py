@@ -5,7 +5,6 @@ tokens for each document and an accompanying list of multiclass labels.
 
 The labels for each document should be [t, num_classes],
 where t is the number of tokens in the document.
-
 """
 
 import json

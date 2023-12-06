@@ -4,7 +4,6 @@ https://aclanthology.org/2023.acl-short.16/
 
 k: number of chunks in document
 c: chunk length (in tokens)
-
 """
 
 import torch
