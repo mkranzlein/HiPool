@@ -6,10 +6,10 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import AdamW, BertTokenizerFast, get_linear_schedule_with_warmup
+from transformers import AdamW, BertTokenizerFast
+# from transformers import get_linear_schedule_with_warmup
 
-from hipool.curiam_reader import CuriamDataset
-from hipool.imdb_reader import IMDBDataset
+from hipool.curiam_reader import DocDataset
 from hipool.models import TokenClassificationModel
 from hipool.utils import collate, train_loop, eval_token_classification
 
@@ -19,8 +19,8 @@ chunk_len = 50
 overlap_len = 20
 num_labels = 3
 
-dataset = CuriamDataset(json_file_path="data/curiam.json", tokenizer=bert_tokenizer, num_labels=num_labels,
-                        chunk_len=chunk_len, overlap_len=overlap_len)
+dataset = DocDataset(json_file_path="data/curiam.json", tokenizer=bert_tokenizer, num_labels=num_labels,
+                     chunk_len=chunk_len, overlap_len=overlap_len)
 validation_split = .2
 random_seed = 28
 dataset_size = len(dataset)
