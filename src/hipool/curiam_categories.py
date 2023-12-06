@@ -7,11 +7,10 @@ ORDERED_CATEGORIES = [
     "Language Source",
     "Named Interpretive Rule",
     "Example Use",
-    "Appeal to Meaning",
-]
+    "Appeal to Meaning"]
 
 REDUCED_CATEGORIES = [
     "Focal Term",
+    "Metalinguistic Cue",
     "Direct Quote",
-    "Legal Source",
-    ]
+    "Legal Source"]
