@@ -75,5 +75,3 @@ for epoch in range(EPOCH):
     eval_loop(valid_data_loader, token_model, optimizer, device, num_labels, doc_model=doc_model)
 
 torch.save(token_model, "working_model_nohipool.pt")
-
-# Save model
