@@ -72,6 +72,8 @@ class DocDataset(Dataset):
                              for sentence in raw_document["sentences"]]
             doc_labels = [get_multilabel(sentence, REDUCED_CATEGORIES)
                           for sentence in raw_document["sentences"]]
+            doc_sent_labels = [get_sent_multilabel(sentence, REDUCED_CATEGORIES)
+                               for sentence in raw_document["sentences"]]
 
             tokenizer_output = self.tokenizer(doc_sentences,
                                               is_split_into_words=True,
@@ -83,10 +85,11 @@ class DocDataset(Dataset):
                             for i in range(len(doc_sentences))]
             # subword_mask = list(chain(*subword_mask))
 
-            if len(doc_sentences) > 150 or len(doc_sentences) < 10:
-                continue
+            # if len(doc_sentences) > 150 or len(doc_sentences) < 10:
+            #     continue
             documents.append({"sentences": doc_sentences, "input_ids": wordpiece_input_ids,
-                              "subword_mask": subword_mask, "labels": doc_labels})
+                              "subword_mask": subword_mask, "labels": doc_labels,
+                              "sent_labels": doc_sent_labels})
         return documents
 
     def __len__(self) -> int:
@@ -139,15 +142,34 @@ class SentDataset(Dataset):
         self.input_ids = document["input_ids"]
         self.subword_mask = document["subword_mask"]
         self.labels = document["labels"]
+        self.sent_labels = document["sent_labels"]
 
     def __len__(self) -> int:
         return len(self.sentences)
 
     def __getitem__(self, idx):
         return {"sentence": self.sentences[idx], "input_ids": self.input_ids[idx],
-                "subword_mask": self.subword_mask[idx], "labels": self.labels[idx]}
+                "subword_mask": self.subword_mask[idx], "labels": self.labels[idx],
+                "sent_labels": self.sent_labels[idx]}
 
 
+def get_sent_multilabel(sentence: List[dict], applicable_categories: list):
+    categories_to_ids = {}
+    for i, category in enumerate(applicable_categories):
+        categories_to_ids[category] = i
+
+    sent_label = torch.zeros((1, len(applicable_categories)))
+    for token in sentence["tokens"]:
+        if "annotations" in token:
+            for annotation in token["annotations"]:
+                annotation_category = annotation["category"]
+                if annotation_category in applicable_categories:
+                    category_id = categories_to_ids[annotation_category]
+                    sent_label[0, category_id] = 1
+    return sent_label
+
+
+# TODO: fix "n k"
 def get_multilabel(sentence: List[dict], applicable_categories: list) -> Integer[Tensor, "n k"]:
     """Returns labels for binary multilabel classification for all tokens in a sentence.
 
@@ -160,10 +182,11 @@ def get_multilabel(sentence: List[dict], applicable_categories: list) -> Integer
     categories_to_ids = {}
     for i, category in enumerate(applicable_categories):
         categories_to_ids[category] = i
-    token_category_ids = []
+
 
     labels = []
     for token in sentence["tokens"]:
+        token_category_ids = []
         if "annotations" in token:
             for annotation in token["annotations"]:
                 annotation_category = annotation["category"]
@@ -176,6 +199,8 @@ def get_multilabel(sentence: List[dict], applicable_categories: list) -> Integer
         labels.append(token_label)
     labels = torch.stack(labels)
     return labels
+
+# def get_bio_multilabel(sentence: List[dict])
 
 
 # TODO: move to utils?
@@ -196,4 +221,4 @@ def get_subword_mask(sentence_word_ids: list[int]):
             subword_mask.append(1)
         else:
             subword_mask.append(0)
-    return subword_mask
+    return torch.tensor(subword_mask)

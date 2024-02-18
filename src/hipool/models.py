@@ -53,6 +53,30 @@ class DocModel(nn.Module):
         return doc_hipool_embedding
 
 
+class SentenceClassificationModel(nn.Module):
+    """Sentence classification model via BERT.
+
+    Predicts whether sentence has any metalinguistic tokens.
+    """
+    def __init__(self, num_labels, bert_model, device):
+        super().__init__()
+        self.bert = bert_model
+        self.device = device
+        self.linear = nn.Linear(768, num_labels).to(device)
+
+    @jaxtyped
+    @typechecked
+    def forward(self, ids: Integer[Tensor, "_ c"],
+                mask: Integer[Tensor, "_ c"],
+                token_type_ids: Integer[Tensor, "_ c"]):
+        """Forward pass."""
+
+        # last_hidden_state is x[0], pooler_output is x[1]
+        x = self.bert(ids, attention_mask=mask, token_type_ids=token_type_ids)["pooler_output"]
+        output = self.linear(x)
+        return output
+
+
 class TokenClassificationModel(nn.Module):
     """Token classification via BERT and optional document embedding."""
 
