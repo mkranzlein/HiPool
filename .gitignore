@@ -4,6 +4,8 @@ scratch.ipynb
 # Save models
 models/*
 
+data/output/*
+
 # Launch configs
 .vscode
 
