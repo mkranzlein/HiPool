@@ -11,7 +11,9 @@ from transformers import BertTokenizerFast, get_linear_schedule_with_warmup
 from hipool import utils
 from hipool.curiam_reader import DocDataset
 from hipool.models import DocModel, TokenClassificationModel
-from hipool.utils import collate, get_dataset_size, eval_loop, train_loop
+from hipool.utils import collate, get_dataset_size, generate_dataset_html
+from hipool.train import train_loop
+from hipool.eval import eval_loop
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
@@ -24,7 +26,7 @@ chunk_len = 150
 overlap_len = 20
 num_labels = 4
 TRAIN_BATCH_SIZE = 6  # Number of sentences per batch
-EPOCH = 10
+EPOCH = 6
 hipool_linear_dim = 32
 hipool_hidden_dim = 32
 hipool_output_dim = 32
@@ -47,6 +49,8 @@ valid_data_loader = DataLoader(
     batch_size=1,  # Number of documents ber batch (use 1)
     collate_fn=collate)
 
+print(f"{len(train_data_loader)} in train; {len(valid_data_loader)} in valid")
+
 token_model = TokenClassificationModel(num_labels=num_labels, bert_model=bert_model,
                                        device=device, use_doc_embedding=use_hipool,
                                        doc_embedding_dim=hipool_output_dim).to(device)
@@ -67,11 +71,14 @@ scheduler = get_linear_schedule_with_warmup(optimizer,
                                             num_training_steps=num_training_steps)
 
 for epoch in range(EPOCH):
-
     t0 = time.time()
     batches_losses_tmp = train_loop(train_data_loader, token_model, optimizer, device, scheduler, doc_model=doc_model)
     epoch_loss = np.mean(batches_losses_tmp)
     print(f"Epoch {epoch} average loss: {epoch_loss} ({time.time() - t0} sec)")
-    eval_loop(valid_data_loader, token_model, optimizer, device, num_labels, doc_model=doc_model)
+    eval_loop(valid_data_loader, token_model, device, num_labels, doc_model=doc_model)
+    # eval_sentence_metalanguage(valid_data_loader, token_model, optimizer,
+    #                            device, num_labels, doc_model=doc_model)
+
+generate_dataset_html(valid_data_loader, token_model, num_labels, bert_tokenizer, device)
 
 torch.save(token_model, "working_model_nohipool.pt")
