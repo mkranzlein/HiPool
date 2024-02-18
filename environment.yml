@@ -3,7 +3,8 @@ channels:
   - nvidia # For pytorch's GPU dependencies
 dependencies:
   - huggingface::transformers
-  - jaxtyping
+  - ipywidgets
+  - jsonlines
   - jupyterlab
   - networkx
   - numpy
@@ -13,8 +14,10 @@ dependencies:
   - pytest
   - pytest-cov
   - pytorch::pytorch
-  - pytorch::pytorch-cuda=11.7
+  - pytorch::pytorch-cuda=12.1
   - scikit-learn
+  - tqdm
   - pip:
+    - jaxtyping 
     - torcheval
     - typeguard
