@@ -1,3 +1,5 @@
+"""Possible classifier labels as constants."""
+
 ORDERED_CATEGORIES = [
     "Focal Term",
     "Definition",
