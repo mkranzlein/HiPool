@@ -9,11 +9,10 @@ c: chunk length (in tokens)
 import torch
 from jaxtyping import Float, Integer, jaxtyped
 from torch import Tensor
-from typeguard import typechecked
+from typeguard import typechecked as typechecker
 
 
-@jaxtyped
-@typechecked
+@jaxtyped(typechecker=typechecker)
 def chunk_document(input_ids: list[int], chunk_len: int, overlap_len: int) -> dict:
     """Splits a document into chunks of wordpiece subwords."""
 

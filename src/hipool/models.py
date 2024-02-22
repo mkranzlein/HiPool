@@ -9,7 +9,7 @@ import networkx as nx
 import torch
 from jaxtyping import Float, Integer, jaxtyped
 from torch import nn, Tensor
-from typeguard import typechecked
+from typeguard import typechecked as typechecker
 
 from hipool.hipool import HiPool
 
@@ -64,8 +64,7 @@ class SentenceClassificationModel(nn.Module):
         self.device = device
         self.linear = nn.Linear(768, num_labels).to(device)
 
-    @jaxtyped
-    @typechecked
+    @jaxtyped(typechecker=typechecker)
     def forward(self, ids: Integer[Tensor, "_ c"],
                 mask: Integer[Tensor, "_ c"],
                 token_type_ids: Integer[Tensor, "_ c"]):
@@ -91,8 +90,7 @@ class TokenClassificationModel(nn.Module):
         else:
             self.linear = nn.Linear(768, num_labels).to(device)
 
-    @jaxtyped
-    @typechecked
+    @jaxtyped(typechecker=typechecker)
     def forward(self, ids: Integer[Tensor, "_ c"],
                 mask: Integer[Tensor, "_ c"],
                 token_type_ids: Integer[Tensor, "_ c"],

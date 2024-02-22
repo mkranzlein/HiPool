@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from jaxtyping import Float, jaxtyped
 from torch import Tensor
 from torch_geometric.nn import DenseGCNConv
-from typeguard import typechecked
+from typeguard import typechecked as typechecker
 
 
 class HiPool(torch.nn.Module):
@@ -48,8 +48,7 @@ class HiPool(torch.nn.Module):
         mapping = mapping[:num_low_nodes]
         return mapping
 
-    @jaxtyped
-    @typechecked
+    @jaxtyped(typechecker=typechecker)
     def cluster_attention(self, x: Float[Tensor, "low low_dim"],
                           low_to_high_mapping: Float[Tensor, "low high"],
                           attention_weights: Float[Tensor, "low_dim low_dim"]) -> Float[Tensor, "high low_dim"]:
@@ -67,8 +66,7 @@ class HiPool(torch.nn.Module):
         output: Float[Tensor, "high low_dim"] = torch.matmul(scores, x) + high_representations
         return output
 
-    @jaxtyped
-    @typechecked
+    @jaxtyped(typechecker=typechecker)
     def forward(self, x: Float[Tensor, "low in_dim"],
                 adj_matrix: Float[Tensor, "low low"]):
         """A forward pass through the HiPool model.

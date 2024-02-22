@@ -36,8 +36,7 @@ This is **not the original repo for HiPool and I am not an author on the HiPool 
 This repo uses [jaxtyping](https://github.com/google/jaxtyping) and [typeguard](https://typeguard.readthedocs.io/) to enforce correct tensor dimensions at runtime. If you see an unfamiliar type annotation or decorators like in the example the below, it's for type checking.
 
 ```python
-@jaxtyped
-@typechecked
+@jaxtyped(typechecker=typechecker)
 def some_function(x: Float[torch.Tensor, "10, 768"]):
     pass
 ```

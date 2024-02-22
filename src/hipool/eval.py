@@ -7,7 +7,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from torcheval.metrics import BinaryF1Score, BinaryPrecision, BinaryRecall
-from typeguard import typechecked
+from typeguard import typechecked as typechecker
 
 from hipool.models import DocModel, TokenClassificationModel
 from hipool.utils import collate_sentences
@@ -144,8 +144,7 @@ def eval_sentence_metalanguage(doc_data_loader, token_model: TokenClassification
             f = class_metrics["f"].compute().item()
             print(f"class {i}\t{p:.4f}\t{r:.4f}\t{f:.4f}")
 
-@jaxtyped
-@typechecked
+@jaxtyped(typechecker=typechecker)
 def get_eval_mask(seq_input_ids,  # : Integer[Tensor, "k c"],
                   overlap_len, longest_seq):
     """Create a mask to identify which tokens should be evaluated."""

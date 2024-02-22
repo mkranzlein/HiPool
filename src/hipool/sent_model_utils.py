@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from torcheval.metrics import BinaryF1Score, BinaryPrecision, BinaryRecall
 from tqdm import tqdm
-from typeguard import typechecked
 
 from hipool.models import SentenceClassificationModel
 from hipool.curiam_categories import REDUCED_CATEGORIES
